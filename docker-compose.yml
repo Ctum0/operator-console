@@ -1,0 +1,28 @@
+services:
+  operator-console:
+    container_name: operator-console
+    build: .
+    image: operator-console:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      CONSOLE_TOKEN: ${CONSOLE_TOKEN:?CONSOLE_TOKEN required}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      N8N_PROPOSE_WEBHOOK: ${N8N_PROPOSE_WEBHOOK:-}
+      REPO: ${REPO:-Ctum0/detection-platform}
+      WAZUH_HOST: ${WAZUH_HOST:-100.81.241.62}
+      WAZUH_PORT: ${WAZUH_PORT:-1514}
+      GIT_SHA: ${GIT_SHA:-}
+    volumes:
+      - console-data:/data
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  console-data:

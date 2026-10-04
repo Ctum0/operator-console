@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detection Platform — Operator Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS — Linear / GitHub-dark fusion ============ */
+:root {
+  --bg: #08090a;
+  --panel: #0f1011;
+  --elev: #191a1b;
+  --border: rgba(255,255,255,0.05);
+  --border-2: rgba(255,255,255,0.08);
+  --ink: #f7f8f8;
+  --ink-2: #d0d6e0;
+  --ink-3: #8a8f98;
+  --ink-4: #62666d;
+  --accent: #58a6ff;
+  --accent-hover: #79b6ff;
+  --accent-dim: rgba(88,166,255,0.12);
+  --ok: #3fb950;
+  --warn: #d29922;
+  --bad: #f85149;
+  --pending: #8b949e;
+  --r: 8px;
+  --r-sm: 6px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:14px; }
+body {
+  background: var(--bg);
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv01", "ss03";
+  font-variant-numeric: tabular-nums;
+}
+::selection { background: rgba(88,166,255,0.28); color: var(--ink); }
+
+/* thin dark scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #2a2c30 transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2c30; border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #3a3d42; border: 2px solid transparent; background-clip: content-box; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 2px solid rgba(88,166,255,0.45); outline-offset: 1px; border-radius: 4px; }
+
+/* ============ HEADER (glass allowed here) ============ */
+.topbar {
+  position: sticky; top:0; z-index:20;
+  height: 56px;
+  background: rgba(8,9,10,0.72);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border-bottom: 1px solid var(--border-2);
+  display:flex; align-items:center; gap:16px;
+  padding: 0 24px;
+}
+.brand { display:flex; align-items:center; gap:10px; flex:none; }
+.brand-mark {
+  width:24px; height:24px; border-radius:6px;
+  background: var(--accent-dim);
+  border:1px solid rgba(88,166,255,0.3);
+  display:grid; place-items:center;
+}
+.brand-mark span {
+  width:6px; height:6px; border-radius:2px; background:var(--accent);
+  display:block;
+}
+.brand-name { font-weight:590; font-size:13px; letter-spacing:-0.02em; color:var(--ink); }
+.brand-env {
+  font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
+  padding:2px 7px; border:1px solid var(--border-2); border-radius:5px;
+  background: rgba(255,255,255,0.02);
+  letter-spacing:0;
+}
+/* breadcrumb-style nav */
+.crumbs { display:flex; align-items:center; gap:8px; min-width:0; }
+.crumbs a {
+  color: var(--ink-3); font-size:13px; font-weight:510;
+  padding:4px 8px; border-radius:6px; white-space:nowrap;
+}
+.crumbs a:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
+.crumbs a[aria-current="page"] { color: var(--ink); }
+.crumbs a[aria-current="page"]:hover { background: transparent; color: var(--ink); cursor: default; }
+.crumb-sep { color: var(--ink-4); font-size:12px; flex:none; user-select:none; }
+.topbar-spacer { flex:1; }
+
+/* status pills */
+.pill-ok {
+  display:inline-flex; align-items:center; gap:7px; flex:none;
+  font-size:12px; font-weight:510; color:var(--ok);
+  padding:3px 11px 3px 9px;
+  border:1px solid rgba(63,185,80,0.25); border-radius:999px;
+  background: rgba(63,185,80,0.08);
+  letter-spacing:-0.005em;
+}
+.pill-warn { color:var(--warn); border-color:rgba(210,153,34,0.25); background:rgba(210,153,34,0.08); }
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex:none; }
+.dot-ok { background:var(--ok); }
+.dot-warn { background:var(--warn); }
+.dot-bad { background:var(--bad); }
+.dot-pending { background:var(--pending); }
+.dot-pulse { position:relative; }
+.dot-pulse::after {
+  content:""; position:absolute; inset:0; border-radius:50%;
+  background:inherit; animation:pulse 2.4s ease-out infinite;
+}
+@keyframes pulse {
+  0% { transform:scale(1); opacity:0.5; }
+  70% { transform:scale(2.2); opacity:0; }
+  100% { transform:scale(2.2); opacity:0; }
+}
+
+/* ============ BUTTONS ============ */
+.btn {
+  font-family:var(--sans); font-size:12.5px; font-weight:510;
+  height:30px; padding:0 13px;
+  border-radius: var(--r-sm); cursor:pointer;
+  border:1px solid transparent; letter-spacing:-0.005em;
+  font-feature-settings: "cv01", "ss03";
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  white-space:nowrap;
+}
+.btn:disabled { opacity:0.55; cursor:not-allowed; }
+.btn svg { flex:none; }
+.btn-primary {
+  background:var(--accent); color:#04070c; border-color:var(--accent);
+  font-weight:590;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.btn-primary:hover:not(:disabled) { background:var(--accent-hover); border-color:var(--accent-hover); }
+.btn-primary:active:not(:disabled) { background:#5ea4f5; }
+.btn-ghost {
+  background:transparent; color:var(--ink-2); border-color:var(--border-2);
+}
+.btn-ghost:hover:not(:disabled) { color:var(--ink); border-color:rgba(255,255,255,0.16); background:rgba(255,255,255,0.03); }
+.btn-approve {
+  background:rgba(63,185,80,0.15); color:#4ecb61;
+  border-color:rgba(63,185,80,0.35); font-weight:590;
+}
+.btn-approve:hover:not(:disabled) { background:rgba(63,185,80,0.25); border-color:rgba(63,185,80,0.5); }
+.btn-approve:active:not(:disabled) { background:rgba(63,185,80,0.32); }
+.btn-reject {
+  background:transparent; color:var(--ink-2); border-color:var(--border-2);
+}
+.btn-reject:hover:not(:disabled) {
+  color:var(--bad); border-color:rgba(248,81,73,0.35); background:rgba(248,81,73,0.08);
+}
+.btn-reject:active:not(:disabled) { background:rgba(248,81,73,0.14); }
+
+/* ============ LAYOUT — main + fixed sidebar ============ */
+.shell {
+  display:grid;
+  grid-template-columns: minmax(0,1fr) 344px;
+  gap:16px;
+  max-width: 1440px;
+  margin:0 auto;
+  padding: 24px;
+  align-items:start;
+}
+main { min-width:0; }
+
+/* ============ QUEUE HEAD ============ */
+.queue-head {
+  display:flex; align-items:baseline; gap:12px; margin-bottom:16px; flex-wrap:wrap;
+}
+.queue-head h1 {
+  font-size:17px; font-weight:590; letter-spacing:-0.022em; color:var(--ink);
+  line-height:1.3;
+}
+.queue-head .count {
+  color:var(--ink-3); font-size:12px; font-family:var(--mono);
+  padding:2px 8px; border:1px solid var(--border-2); border-radius:999px;
+  background:rgba(255,255,255,0.02);
+}
+.queue-head .sep { color:var(--ink-4); font-size:12px; }
+.queue-head .disposition { color:var(--ink-3); font-size:12px; }
+.queue-head .disposition b { color:var(--ok); font-weight:590; }
+
+/* ============ CARDS / PROPOSALS ============ */
+.card {
+  background: var(--panel);
+  border:1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.proposal-head {
+  display:flex; align-items:flex-start; gap:12px;
+  padding:16px 16px 0;
+}
+.proposal-id {
+  font-family:var(--mono); font-size:11px; color:var(--accent);
+  letter-spacing:0; flex:none; padding-top:3px;
+  font-variant-numeric: tabular-nums;
+}
+.proposal-title { flex:1; min-width:0; }
+.proposal-title h2 {
+  font-size:14px; font-weight:590; letter-spacing:-0.014em; color:var(--ink);
+  line-height:1.4;
+}
+.proposal-title .sub {
+  color:var(--ink-3); font-size:12px; margin-top:3px;
+}
+.proposal-title .sub code {
+  font-family:var(--mono); font-size:11px; color:var(--ink-3);
+  background:rgba(255,255,255,0.03); padding:1px 5px; border-radius:4px;
+}
+.severity {
+  font-family:var(--mono); font-size:10.5px; font-weight:510;
+  padding:2px 7px; border-radius:5px; letter-spacing:0.04em;
+  border:1px solid; flex:none; margin-top:1px;
+  text-transform:uppercase;
+}
+.sev-high { color:var(--bad); border-color:rgba(248,81,73,0.3); background:rgba(248,81,73,0.08); }
+.sev-med { color:var(--warn); border-color:rgba(210,153,34,0.3); background:rgba(210,153,34,0.08); }
+.sev-low { color:var(--ok); border-color:rgba(63,185,80,0.3); background:rgba(63,185,80,0.08); }
+
+.rationale {
+  padding:10px 16px 14px;
+  color:var(--ink-3); font-size:12.5px;
+  max-width:68ch;
+}
+.rationale b { color:var(--ink-2); font-weight:510; }
+
+/* ============ YAML VIEW ============ */
+.yaml-view {
+  margin:0 16px 14px;
+  position:relative;
+}
+.yaml-view pre {
+  font-family:var(--mono);
+  font-size:12px; line-height:1.65;
+  color:#b8c2cc;
+  background:var(--elev);
+  border:1px solid var(--border-2);
+  border-radius: var(--r-sm);
+  padding:12px 14px;
+  overflow-x:auto;
+  max-height:240px;
+  overflow-y:auto;
+  letter-spacing:0;
+  font-variant-numeric: normal;
+}
+.yaml-view pre .k { color:rgba(88,166,255,0.85); }       /* keys — accent hue */
+.yaml-view pre .s { color:#a5d6a0; }                      /* strings */
+.yaml-view pre .c { color:var(--ink-4); font-style:italic; } /* comments */
+.yaml-view pre .p { color:var(--ink); font-weight:500; }  /* punctuation/ids */
+.yaml-view pre .d { color:var(--ink-2); }                 /* detection values */
+.yaml-actions { position:absolute; top:8px; right:8px; display:flex; gap:4px; }
+.yaml-toggle, .yaml-copy {
+  font-family:var(--mono); font-size:10.5px; letter-spacing:0;
+  color:var(--ink-3); background:rgba(25,26,27,0.92);
+  border:1px solid var(--border-2); border-radius:5px;
+  height:22px; padding:0 8px; cursor:pointer;
+  transition: color .12s ease, border-color .12s ease;
+}
+.yaml-toggle:hover, .yaml-copy:hover { color:var(--ink); border-color:rgba(255,255,255,0.16); }
+
+.proposal-foot {
+  display:flex; align-items:center; gap:8px;
+  min-height:54px; padding:11px 16px;
+  border-top:1px solid var(--border);
+  background:rgba(255,255,255,0.015);
+}
+.proposal-foot .meta {
+  color:var(--ink-4); font-size:11.5px;
+  display:flex; gap:14px; margin-right:auto; min-width:0; flex-wrap:wrap;
+}
+.proposal-foot .meta span b { color:var(--ink-2); font-weight:510; font-variant-numeric:tabular-nums; }
+.proposal-foot .meta .rule { font-family:var(--mono); font-size:11px; letter-spacing:0; }
+.proposal-foot input {
+  flex:1; min-width:120px; height:30px;
+  background:var(--elev); border:1px solid var(--border-2);
+  color:var(--ink); padding:0 10px; border-radius:6px;
+  font-size:12px; font-family:var(--sans);
+}
+.proposal-foot input::placeholder { color:var(--ink-4); }
+.decision {
+  font-size:12px; font-weight:590;
+  height:30px; padding:0 12px; border-radius:var(--r-sm);
+  display:inline-flex; align-items:center;
+}
+.decision-approved { color:var(--ok); background:rgba(63,185,80,0.1); border:1px solid rgba(63,185,80,0.25); }
+.decision-rejected { color:var(--bad); background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.25); }
+.time { font-size:11px; color:var(--ink-4); font-family:var(--mono); letter-spacing:0; flex:none; }
+
+/* empty / loading states */
+.empty-state {
+  padding:32px 16px; text-align:center; color:var(--ink-3); font-size:12.5px;
+}
+.empty-state::before {
+  content:""; display:block; width:32px; height:32px; margin:0 auto 12px;
+  border-radius:8px; border:1px dashed var(--border-2);
+  background:rgba(255,255,255,0.02);
+}
+.skeleton { position:relative; overflow:hidden; background:rgba(255,255,255,0.03); border-radius:6px; }
+.skeleton::after {
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation:shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0% { transform:translateX(-100%);} 100% { transform:translateX(100%);} }
+
+/* ============ SIDEBAR ============ */
+aside { min-width:0; }
+.panel {
+  background: var(--panel);
+  border:1px solid var(--border);
+  border-radius: var(--r);
+  padding:16px;
+  margin-bottom:16px;
+}
+.panel h3 {
+  font-size:10.5px; font-weight:590; letter-spacing:0.06em;
+  text-transform:uppercase; color:var(--ink-3);
+  margin-bottom:12px;
+}
+.panel h3 small { color:var(--ink-4); font-weight:400; letter-spacing:0; text-transform:none; }
+
+.health-row {
+  display:flex; align-items:center; gap:10px;
+  min-height:30px; font-size:12.5px;
+}
+.health-row .name { color:var(--ink-2); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.health-row .val {
+  font-family:var(--mono); font-size:11px; color:var(--ink-3);
+  letter-spacing:0; text-align:right; flex:none; margin-left:auto;
+  font-variant-numeric: tabular-nums;
+}
+.health-row.stuck .name { color:var(--warn); }
+.health-row .failures { color:var(--bad); }
+
+.cov-table { width:100%; border-collapse:collapse; }
+.cov-table th {
+  text-align:left; font-size:10px; font-weight:510;
+  color:var(--ink-4); letter-spacing:0.06em; text-transform:uppercase;
+  padding:0 0 8px;
+  border-bottom:1px solid var(--border-2);
+}
+.cov-table th:last-child, .cov-table td:last-child { text-align:right; }
+.cov-table td {
+  padding:8px 0; font-size:12.5px; color:var(--ink-2);
+  border-bottom:1px solid var(--border);
+  vertical-align:middle; white-space:nowrap;
+}
+.cov-table tr:last-child td { border-bottom:none; }
+.cov-table .n {
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-3);
+  font-variant-numeric: tabular-nums; letter-spacing:0;
+}
+.cov-table .dot { margin-right:6px; vertical-align:-1px; }
+.cov-bar {
+  position:relative; height:4px; border-radius:2px;
+  background:rgba(255,255,255,0.07);
+  width:64px; display:inline-block; vertical-align:middle;
+}
+.cov-bar i {
+  position:absolute; inset:0 auto 0 0; border-radius:2px; background:var(--accent);
+}
+.cov-bar.low i { background:var(--warn); }
+
+/* activity feed */
+.feed { min-width:0; }
+.feed-item {
+  display:flex; gap:10px; align-items:flex-start;
+  min-height:38px; padding:9px 0;
+  border-bottom:1px solid var(--border);
+  font-size:12px;
+}
+.feed-item:last-child { border-bottom:none; padding-bottom:0; }
+.feed-item:first-of-type { padding-top:0; }
+.feed-item .dot { margin-top:5px; }
+.feed-item .txt { color:var(--ink-3); min-width:0; }
+.feed-item .txt b { color:var(--ink-2); font-weight:510; }
+.feed-item .txt code {
+  font-family:var(--mono); font-size:10.5px; color:var(--ink-3); letter-spacing:0;
+  background:rgba(255,255,255,0.03); padding:1px 4px; border-radius:4px;
+}
+.feed-item .when {
+  display:block; margin-top:3px;
+  font-family:var(--mono); font-size:10.5px; color:var(--ink-4); letter-spacing:0;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 1180px) {
+  .shell { grid-template-columns: minmax(0,1fr) 320px; padding:20px; }
+}
+@media (max-width: 1020px) {
+  .shell { grid-template-columns: minmax(0,1fr); }
+  aside { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+  aside .panel { margin-bottom:0; }
+  .crumbs a:not([aria-current="page"]) { display:none; }
+  .crumb-sep { display:none; }
+}
+@media (max-width: 640px) {
+  .topbar { padding:0 16px; gap:10px; }
+  .brand-env, .topbar .btn-ghost { display:none; }
+  .shell { padding:16px; }
+  aside { grid-template-columns: 1fr; }
+  .queue-head .disposition { display:none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot-pulse::after { display:none; }
+  .skeleton::after { animation:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"><span></span></div>
+    <span class="brand-name">Detection Platform</span>
+    <span class="brand-env">Kestrel SOC</span>
+  </div>
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="#">Detections</a>
+    <span class="crumb-sep">/</span>
+    <a href="#" aria-current="page">Review queue</a>
+  </nav>
+  <span class="pill-ok" title="Ingest pipeline last heartbeat 14s ago">
+    <span class="dot dot-ok"></span> Pipeline healthy
+  </span>
+  <div class="topbar-spacer"></div>
+  <button class="btn btn-ghost" title="Rules excluded from auto-proposal">
+    Suppression list
+  </button>
+  <button class="btn btn-primary" id="requestBtn">
+    Request Proposal
+  </button>
+</header>
+
+<!-- ============ SHELL ============ -->
+<div class="shell">
+  <main>
+    <div class="queue-head">
+      <h1>Review queue</h1>
+      <span class="count" id="queueCount">3 pending</span>
+      <span class="sep">·</span>
+      <span class="disposition">Session disposition: <b>2 approved</b>, 1 rejected, 0 revoked</span>
+    </div>
+
+    <!-- PROPOSAL 1: pending -->
+    <article class="card proposal">
+      <div class="proposal-head">
+        <span class="proposal-id">PRP-0417</span>
+        <div class="proposal-title">
+          <h2>LSASS memory access via signed binary</h2>
+          <div class="sub">Source: <code>procmon-lab</code> · covers <code>T1003.001</code> · proposed from 41 correlated events</div>
+        </div>
+        <span class="severity sev-high">HIGH</span>
+      </div>
+      <p class="rationale">
+        Model flagged repeated memory access and handle acquisition against <b>lsass.exe</b>
+        accompanied by trailing <b>rundll32.exe</b> child processes on three lab hosts.
+        Existing coverage only triggers on standalone credential dumping tools; this proposal
+        extends detection to signed-binary proxies.
+      </p>
+      <div class="yaml-view">
+        <pre id="yaml1"><span class="c"># PRP-0417 · prod-eligible · false-positive sim: 2.1%</span>
+<span class="k">title:</span> <span class="s">LSASS Memory Access via Signed Binary Proxy</span>
+<span class="k">id:</span> <span class="p">d4f0e2a1-8b31-4f7e-9c55-2c11d0aa8f4b</span>
+<span class="k">status:</span> <span class="s">experimental</span>
+<span class="k">description:</span> <span class="s">Detects process access to lsass.exe using signed MS binaries.</span>
+<span class="k">references:</span>
+    <span class="k">- https:</span><span class="c">//attack.mitre.org/techniques/T1003/001/</span>
+<span class="k">logsource:</span>
+    <span class="k">product:</span> <span class="s">windows</span>
+    <span class="k">service:</span> <span class="s">sysmon</span>
+<span class="k">detection:</span>
+    <span class="k">selection:</span>
+        <span class="k">EventID:</span> <span class="p">10</span>
+        <span class="k">TargetImage:</span> <span class="d">'*lsass.exe*'</span>
+        <span class="k">GrantedAccess:</span>
+            <span class="k">- <span class="s">0x1010</span></span>
+            <span class="k">- <span class="s">0x143a</span></span>
+    <span class="k">filter_parent:</span>
+        <span class="k">ParentImage:</span> <span class="s">'C:\Windows\System32\wbem\wmiprvse.exe'</span>
+    <span class="k">condition:</span> <span class="s">selection and not filter_parent</span>
+<span class="k">falsepositives:</span>
+    <span class="k">- <span class="s">Legitimate memory readers (AV agents) - enumerate in baseline.</span></span>
+<span class="k">tags:</span>
+    <span class="k">- <span class="s">attack.credential_access</span></span>
+    <span class="k">- <span class="s">attack.t1003.001</span></span>
+    <span class="k">- <span class="s">sysmon</span></span></pre>
+        <div class="yaml-actions">
+          <button class="yaml-copy" data-target="yaml1" title="Copy YAML">copy</button>
+          <button class="yaml-toggle" data-target="yaml1" data-mode="raw">raw</button>
+        </div>
+      </div>
+      <div class="proposal-foot">
+        <span class="meta">
+          <span>Confidence <b>0.94</b></span>
+          <span class="rule">lsa_memory_proxy_v3.yml</span>
+        </span>
+        <button class="btn btn-approve">Approve</button>
+        <button class="btn btn-reject">Reject</button>
+      </div>
+    </article>
+
+    <!-- PROPOSAL 2: pending -->
+    <article class="card proposal">
+      <div class="proposal-head">
+        <span class="proposal-id">PRP-0418</span>
+        <div class="proposal-title">
+          <h2>Impossible travel on VPN edge for service accounts</h2>
+          <div class="sub">Source: <code>auth-gateway</code> · covers <code>T1078</code> · proposed from 9 correlated events</div>
+        </div>
+        <span class="severity sev-med">MED</span>
+      </div>
+      <p class="rationale">
+        Service accounts authenticated from more than one ASN within 30 minutes on production
+        VPN concentrators. Proposed severity is <b>medium</b> because two of nine sequences
+        matched a known datacenter-scanner pattern: rule includes a timezone-consistency check.
+      </p>
+      <div class="yaml-view">
+        <pre id="yaml2"><span class="c"># PRP-0418 · prod-eligible · false-positive sim: 5.8%</span>
+<span class="k">title:</span> <span class="s">Impossible Travel on VPN Edge for Service Accounts</span>
+<span class="k">id:</span> <span class="p">c81d4a2b-73e0-4d9c-96f0-6f7a13b5a2de</span>
+<span class="k">status:</span> <span class="s">experimental</span>
+<span class="k">logsource:</span>
+    <span class="k">product:</span> <span class="s">network</span>
+    <span class="k">service:</span> <span class="s">vpn_gateway</span>
+<span class="k">detection:</span>
+    <span class="k">selection_account:</span>
+        <span class="k">AccountType:</span> <span class="s">'SERVICE'</span>
+    <span class="k">selection_geo:</span>
+        <span class="k">DistinctASN:</span> <span class="s">'&gt;= 2'</span>
+        <span class="k">WindowMinutes:</span> <span class="p">30</span>
+    <span class="k">filter_tz:</span>
+        <span class="k">AuthTzDrift:</span> <span class="s">'&lt; 45min'</span>
+    <span class="k">condition:</span> <span class="s">selection_account and selection_geo and not filter_tz</span>
+<span class="k">tags:</span>
+    <span class="k">- <span class="s">attack.defense_evasion</span></span>
+    <span class="k">- <span class="s">attack.t1078</span></span>
+    <span class="k">- <span class="s">identity</span></span></pre>
+        <div class="yaml-actions">
+          <button class="yaml-copy" data-target="yaml2" title="Copy YAML">copy</button>
+          <button class="yaml-toggle" data-target="yaml2" data-mode="raw">raw</button>
+        </div>
+      </div>
+      <div class="proposal-foot">
+        <span class="meta">
+          <span>Confidence <b>0.71</b></span>
+          <span class="rule">impossible_travel_svc_v1.yml</span>
+        </span>
+        <button class="btn btn-approve">Approve</button>
+        <button class="btn btn-reject">Reject</button>
+      </div>
+    </article>
+
+    <!-- PROPOSAL 3: rejected example -->
+    <article class="card proposal">
+      <div class="proposal-head">
+        <span class="proposal-id">PRP-0415</span>
+        <div class="proposal-title">
+          <h2>Wide glob on downloads directory writes</h2>
+          <div class="sub">Source: <code>edr-fs-events</code> · covers <code>T1105</code> · proposed from 122 correlated events</div>
+        </div>
+        <span class="severity sev-med">MED</span>
+      </div>
+      <p class="rationale">
+        Rejected during earlier session: selection matches every browser download including
+        benign IT push scripts. Returned to pipeline for rework with narrower selection.
+      </p>
+      <div class="yaml-view">
+        <pre id="yaml3"><span class="c"># PRP-0415 · REJECTED · needs selection narrowing</span>
+<span class="k">title:</span> <span class="s">File Write to Downloads by Unknown Process</span>
+<span class="k">id:</span> <span class="p">77a1e0c4-39f8-47aa-bd41-8dce9b0417f2</span>
+<span class="k">status:</span> <span class="s">experimental</span>
+<span class="k">detection:</span>
+    <span class="k">selection:</span>
+        <span class="k">TargetFilename:</span> <span class="d">'*\Downloads\*'</span>
+<span class="k">tags:</span>
+    <span class="k">- <span class="s">attack.t1105</span></span></pre>
+        <div class="yaml-actions">
+          <button class="yaml-copy" data-target="yaml3" title="Copy YAML">copy</button>
+          <button class="yaml-toggle" data-target="yaml3" data-mode="raw">raw</button>
+        </div>
+      </div>
+      <div class="proposal-foot">
+        <span class="meta">
+          <span>Confidence <b>0.38</b></span>
+          <span class="rule">downloads_glob_v1.yml</span>
+        </span>
+        <span class="decision decision-rejected">Rejected</span>
+        <span class="time">yesterday 16:42</span>
+      </div>
+    </article>
+  </main>
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside>
+    <!-- pipeline health -->
+    <div class="panel">
+      <h3>Pipeline Health</h3>
+      <div class="health-row">
+        <span class="dot dot-ok dot-pulse"></span>
+        <span class="name">Ingest</span>
+        <span class="val">1: username@Redzone</span>
+      </div>
+      <div class="health-row">
+        <span class="dot dot-ok"></span>
+        <span class="name">Enrichment</span>
+        <span class="val">24ms p50</span>
+      </div>
+      <div class="health-row">
+        <span class="dot dot-warn"></span>
+        <span class="name">Correlation</span>
+        <span class="val">1 streak</span>
+      </div>
+      <div class="health-row">
+        <span class="dot dot-ok"></span>
+        <span class="name">Proposal engine</span>
+        <span class="val">3 queued</span>
+      </div>
+      <div class="health-row">
+        <span class="dot dot-bad"></span>
+        <span class="name">Deploy worker</span>
+        <span class="val">2 failed</span>
+      </div>
+      <div class="health-row">
+        <span class="dot dot-pending"></span>
+        <span class="name">Sync (last)</span>
+        <span class="val">18min</span>
+      </div>
+    </div>
+
+    <!-- coverage -->
+    <div class="panel">
+      <h3>Detection Coverage</h3>
+      <table class="cov-table">
+        <thead>
+          <tr><th>Domain</th><th>n</th><th>%</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Endpoint</td><td class="n">128</td><td>92</td><td><span class="cov-bar"><i style="width:92%"></i></span></td></tr>
+          <tr><td>Identity</td><td class="n">44</td><td>71</td><td><span class="cov-bar"><i style="width:71%"></i></span></td></tr>
+          <tr><td>Network</td><td class="n">31</td><td>58</td><td><span class="cov-bar low"><i style="width:58%"></i></span></td></tr>
+          <tr><td>Cloud</td><td class="n">19</td><td>34</td><td><span class="cov-bar low"><i style="width:34%"></i></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- activity -->
+    <div class="panel">
+      <h3>Activity</h3>
+      <div class="feed">
+        <div class="feed-item">
+          <span class="dot dot-ok"></span>
+          <span class="txt">
+            <b>you</b> approved <code>PRP-0409</code> — credential dumping write to SAM explosive redzone
+            <span class="when">T-4min · lsa_memory_proxy_v3.yml</span>
+          </span>
+        </div>
+        <div class="feed-item">
+          <span class="dot dot-warn"></span>
+          <span class="txt">
+            <b>pipeline</b> escalated crypto-occupancy sweep at <code>auth-gateway</code> during correlation pass
+            <span class="when">T-14min · rank 77 · escalated</span>
+          </span>
+        </div>
+        <div class="feed-item">
+          <span class="dot dot-bad"></span>
+          <span class="txt">
+            <b>deploy worker</b> returned error on push to <code>siem-prod</code> — retry scheduled
+            <span class="when">T-31min · 2 attempts</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// YAML raw/wrap toggle + copy-to-clipboard (delegated, works for live-rendered cards too)
+document.querySelectorAll('.yaml-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pre = document.getElementById(btn.dataset.target);
+    if (btn.dataset.mode === 'raw') {
+      pre.style.whiteSpace = 'pre';
+      pre.style.overflowX = 'auto';
+      btn.textContent = 'wrap';
+      btn.dataset.mode = 'wrap';
+    } else {
+      pre.style.whiteSpace = '';
+      btn.textContent = 'raw';
+      btn.dataset.mode = 'raw';
+    }
+  });
+});
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.yaml-copy');
+  if (!btn) return;
+  const pre = document.getElementById(btn.dataset.target);
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'copied';
+    setTimeout(() => { btn.textContent = 'copy'; }, 1500);
+  }).catch(() => { btn.textContent = 'failed'; setTimeout(() => { btn.textContent = 'copy'; }, 1500); });
+});
+// ensure live-rendered yaml views also get a copy button
+new MutationObserver(muts => {
+  document.querySelectorAll('.yaml-view').forEach(v => {
+    if (v.querySelector('.yaml-copy') || !v.querySelector('pre[id]')) return;
+    const pre = v.querySelector('pre[id]');
+    const wrap = document.createElement('div');
+    wrap.className = 'yaml-actions';
+    wrap.innerHTML = '<button class="yaml-copy" data-target="' + pre.id + '" title="Copy YAML">copy</button>';
+    v.appendChild(wrap);
+  });
+}).observe(document.documentElement, { childList: true, subtree: true });
+</script>
+
+<script>
+/* ---- LIVE DATA WIRING (appended; design/CSS untouched) ---- */
+const API = {
+  headers: () => ({ 'Authorization': 'Bearer ' + localStorage.getItem('consoleToken'), 'Content-Type': 'application/json' }),
+  async get(p) { const r = await fetch(p, {headers: this.headers()}); if (r.status === 401) { gate(); throw new Error('auth'); } if (!r.ok) throw new Error(p + ' -> ' + r.status); return r.json(); },
+  async post(p, body) { const r = await fetch(p, {method: 'POST', headers: this.headers(), body: body ? JSON.stringify(body) : null}); if (r.status === 401) { gate(); throw new Error('auth'); } if (!r.ok && r.status !== 202) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.status); } return r.json().catch(() => ({})); }
+};
+
+function gate() {
+  if (document.getElementById('gateOverlay')) return;
+  const o = document.createElement('div');
+  o.id = 'gateOverlay';
+  o.style.cssText = 'position:fixed;inset:0;background:#08090af2;z-index:999;display:flex;align-items:center;justify-content:center;';
+  o.innerHTML = '<div style="text-align:center"><div class="brand-name" style="font-size:20px;margin-bottom:16px">Detection Platform</div>' +
+    '<input id="gateToken" type="password" placeholder="operator token" style="background:#191a1b;border:1px solid rgba(255,255,255,0.1);color:#f7f8f8;padding:10px 14px;border-radius:8px;width:280px;font-family:ui-monospace,monospace;font-size:13px" />' +
+    '<br/><button id="gateBtn" class="btn btn-primary" style="margin-top:12px;padding:10px 24px">Unlock</button>' +
+    '<div id="gateErr" style="color:#f85149;font-size:12px;margin-top:8px"></div></div>';
+  document.body.appendChild(o);
+  const tryToken = async () => {
+    const t = document.getElementById('gateToken').value.trim();
+    try {
+      const r = await fetch('/api/proposals', {headers: {'Authorization': 'Bearer ' + t}});
+      if (r.status === 401) { document.getElementById('gateErr').textContent = 'invalid token'; return; }
+      localStorage.setItem('consoleToken', t);
+      o.remove(); location.reload();
+    } catch (e) { document.getElementById('gateErr').textContent = 'error: ' + e.message; }
+  };
+  document.getElementById('gateBtn').addEventListener('click', tryToken);
+  document.getElementById('gateToken').addEventListener('keydown', e => { if (e.key === 'Enter') tryToken(); });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+
+function toast(msg, ok) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#191a1b;border:1px solid rgba(255,255,255,0.12);color:' + (ok ? '#3fb950' : '#f85149') + ';padding:12px 18px;border-radius:8px;font-size:13px;z-index:998;font-family:ui-monospace,monospace';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function yamlHighlight(y) {
+  return esc(y)
+    .replace(/^(\s*)([a-zA-Z_]+):/gm, '$1<span class="k">$2:</span>')
+    .replace(/^(\s*-\s*)(.+)$/gm, (m0, sp, v) => sp + '<span class="s">' + v + '</span>');
+}
+
+function renderProposals(props) {
+  const main = document.querySelector('main');
+  if (!main) return;
+  const pending = props.filter(p => p.status === 'pending' || p.status === 'merging' || p.status === 'merge_failed');
+  const done = props.filter(p => !['pending','merging','merge_failed'].includes(p.status));
+  const ordered = [...pending, ...done];
+  main.innerHTML = ordered.map(p => {
+    const badge = p.status === 'pending' ? '<span class="severity sev-med">PENDING</span>'
+      : p.status === 'merging' ? '<span class="severity sev-med">MERGING…</span>'
+      : p.status === 'merge_failed' ? '<span class="severity sev-high">MERGE FAILED</span>'
+      : p.status === 'approved' ? '<span class="severity sev-low">MERGED</span>'
+      : '<span class="severity sev-med">REJECTED</span>';
+    const prLink = p.pr_url ? `<a class="sub" href="${escAttr(p.pr_url)}" target="_blank" style="color:#58a6ff">PR #${esc(p.pr_number)}</a>` : '';
+    const actions = p.status === 'pending'
+      ? `<div class="proposal-foot">
+           <button class="btn btn-approve" onclick="doApprove('${escAttr(p.id)}')">Approve</button>
+           <button class="btn btn-reject" onclick="showReject('${escAttr(p.id)}')">Reject</button>
+           <div id="reject-${escAttr(p.id)}" style="display:none;flex:1;display:flex;gap:8px;margin-left:8px">
+             <input id="reason-${escAttr(p.id)}" placeholder="rejection reason" style="flex:1;background:#191a1b;border:1px solid rgba(255,255,255,0.1);color:#f7f8f8;padding:6px 10px;border-radius:6px;font-size:12px" />
+             <button class="btn btn-reject" onclick="doReject('${escAttr(p.id)}')">Confirm</button>
+           </div>
+         </div>`
+      : '';
+    return `<article class="card proposal">
+      <div class="proposal-head">
+        <span class="proposal-id">${esc(p.technique)}</span>
+        <div class="proposal-title"><h2>${esc(p.title)}</h2>
+          <div class="sub">${prLink ? 'Source: ' + prLink + ' · ' : ''}AI-proposed · pending operator review</div></div>
+        ${badge}
+      </div>
+      <p class="rationale">${esc(p.reasoning)}</p>
+      <div class="yaml-view"><pre id="yaml-${escAttr(p.id)}">${yamlHighlight(p.sigma_yaml || '')}</pre></div>
+      ${actions}
+    </article>`;
+  }).join('') || '<article class="card proposal"><p class="rationale">No proposals yet. Use "Request Proposal" to trigger the AI Detection Engineer.</p></article>';
+  document.getElementById('queueCount').textContent = pending.length;
+}
+
+async function doApprove(id) {
+  try {
+    await API.post('/api/proposals/' + id + '/approve');
+    toast('Merge started for ' + id, true);
+    refresh();
+  } catch (e) { toast('Approve failed: ' + e.message, false); }
+}
+function showReject(id) {
+  const el = document.getElementById('reject-' + id);
+  if (el) { el.style.display = el.style.display === 'none' ? 'flex' : 'none'; el.style.display = 'flex'; }
+}
+async function doReject(id) {
+  const reason = (document.getElementById('reason-' + id) || {}).value || '';
+  try {
+    await API.post('/api/proposals/' + id + '/reject', {reason});
+    toast('Rejected ' + id, true);
+    refresh();
+  } catch (e) { toast('Reject failed: ' + e.message, false); }
+}
+
+function renderHealth(h) {
+  const panel = document.querySelector('.panel');
+  const dotCls = s => s === 'ok' ? 'dot-ok' : s === 'warn' ? 'dot-warn' : s === 'bad' ? 'dot-bad' : 'dot-pending';
+  // Rebuild all health rows dynamically from API components — never patch
+  // static demo rows by index (labels drifted from the real components).
+  const comps = (h && h.components) || [];
+  const host = document.querySelector('aside .panel .health-row')?.parentElement;
+  if (host && comps.length) {
+    host.innerHTML = comps.map(c =>
+      `<div class="health-row"><span class="dot ${dotCls(c.status)}${c.status === 'ok' ? ' dot-pulse' : ''}"></span>` +
+      `<span class="name">${esc(c.name)}</span><span class="val">${esc(c.detail || c.status)}</span></div>`
+    ).join('');
+  }
+  // status pill
+  const pill = document.querySelector('.pill-ok');
+  if (pill) {
+    const allOk = comps.length > 0 && comps.every(c => c.status === 'ok');
+    pill.innerHTML = `<span class="dot ${allOk ? 'dot-ok' : 'dot-warn'}"></span> ${allOk ? 'Pipeline healthy' : 'Degraded'}`;
+    pill.style.color = allOk ? '#3fb950' : '#d29922';
+  }
+}
+
+function renderCoverage(rows) {
+  const table = document.querySelector('.cov-table');
+  if (!table || !Array.isArray(rows)) return;
+  const get = (r, objKeys, arrIdx) => {
+    if (Array.isArray(r)) return r[arrIdx] != null ? String(r[arrIdx]) : '?';
+    for (const k of objKeys) { if (r[k] != null && r[k] !== '') return String(r[k]); }
+    return '?';
+  };
+  table.innerHTML = '<tr><th>Technique</th><th>Status</th></tr>' + rows.slice(0, 14).map(r => {
+    const tech = get(r, ['technique','Technique'], 1);
+    const statusFull = get(r, ['status','Status'], 7);
+    const st = statusFull.toLowerCase();
+    const cls = st.includes('validated') ? 'dot-ok' : st.includes('untested') || st.includes('blocked') || st === '?' ? 'dot-pending' : 'dot-warn';
+    return `<tr><td>${esc(tech)}</td><td><span class="dot ${cls}"></span> ${esc(statusFull.split(' ')[0])}</td></tr>`;
+  }).join('');
+}
+
+function renderActivity(items) {
+  const feed = document.querySelector('.feed');
+  if (!feed || !Array.isArray(items)) return;
+  feed.innerHTML = items.slice(0, 8).map(a =>
+    `<div class="feed-item"><span class="dot dot-pending"></span><span class="txt"><b>${esc(a.actor)}</b> ${esc(a.action)} — ${esc(a.detail || '')}<span class="when">${esc((a.ts || '').replace('T',' ').slice(0,19))}</span></span></div>`
+  ).join('');
+}
+
+async function refresh() {
+  try {
+    const props = await API.get('/api/proposals');
+    renderProposals(Array.isArray(props) ? props : props.proposals || []);
+  } catch (e) { console.warn('proposals', e.message); }
+  try {
+    const h = await API.get('/api/health/pipeline');
+    renderHealth(h);
+  } catch (e) { console.warn('health', e.message); }
+  try {
+    const cov = await API.get('/api/coverage');
+    renderCoverage(cov.rows || cov);
+  } catch (e) { console.warn('coverage', e.message); }
+  try {
+    const act = await API.get('/api/activity');
+    renderActivity(Array.isArray(act) ? act : act.activity || act.items || []);
+  } catch (e) { console.warn('activity', e.message); }
+}
+
+// boot
+(async () => {
+  if (!localStorage.getItem('consoleToken')) { gate(); return; }
+  try { await API.get('/api/proposals'); } catch (e) { gate(); return; }
+  refresh();
+  setInterval(refresh, 15000);
+  const reqBtn = document.getElementById('requestBtn') || document.getElementById('requestBtnTop');
+  if (reqBtn) reqBtn.addEventListener('click', async () => {
+    reqBtn.disabled = true; reqBtn.textContent = 'Requesting…';
+    try { await API.post('/api/trigger/propose'); toast('Proposal cycle triggered', true); }
+    catch (e) { toast('Trigger failed: ' + e.message, false); }
+    setTimeout(() => { reqBtn.disabled = false; reqBtn.textContent = 'Request Proposal'; }, 3000);
+  });
+})();
+</script>
+
+</body>
+</html>
