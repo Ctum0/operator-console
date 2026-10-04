@@ -424,6 +424,14 @@ table.t td.nowrap { white-space:nowrap; }
 .toolbar .search { flex:1; min-width:200px; max-width:360px; }
 .toolbar select { width:auto; min-width:170px; }
 .toolbar .right { margin-left:auto; display:flex; gap:10px; align-items:center; color:var(--ink-4); font-size:12.5px; }
+.cov-toggle .ic { transition: transform .15s ease; transform: rotate(-90deg); }
+.cov-toggle[aria-expanded="true"] .ic { transform: none; }
+table.t tr.cov-detail td { background: rgba(255,255,255,0.015); padding: 4px 14px 18px 52px; }
+table.t tr.cov-detail:hover { background: transparent; }
+.cov-detail .evidence { grid-template-columns: max-content minmax(0,1fr); margin-top:8px; }
+.cov-detail .evidence dd { font-family: var(--sans); font-size:13px; color: var(--ink-2); }
+.cov-detail .evidence dd code { color: var(--ink); }
+.cov-detail .evidence dd a { margin-left:10px; font-size:12.5px; }
 .stats { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:16px; margin-bottom:16px; }
 
 /* ================= HEALTH / ACTIVITY ================= */
@@ -473,9 +481,10 @@ html.locked .gate[hidden] { display:grid !important; }
   .main { overflow:visible; }
   .sidebar {
     position:fixed; inset:0 auto 0 0; width: min(var(--side-w), 86vw); z-index:70;
-    transform: translateX(-102%); transition: transform .25s var(--ease); box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+    transform: translateX(-102%); transition: transform .25s var(--ease), visibility 0s linear .25s; box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+    visibility:hidden;
   }
-  body.nav-open .sidebar { transform:none; }
+  body.nav-open .sidebar { transform:none; visibility:visible; transition: transform .25s var(--ease), visibility 0s; }
   body.nav-open .scrim { display:block; position:fixed; inset:0; z-index:65; background: rgba(0,0,0,0.55); }
   .mobilebar {
     display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:30; height:56px; padding: 0 12px 0 8px;
@@ -724,7 +733,7 @@ const TABS = [
 const S = {
   view: 'overview', sel: null, tab: 'action', q: '',
   proposals: [], counts: {}, health: null, coverage: null, triggers: null, activity: null,
-  chartDays: 14, live: true, covQ: '', covStatus: 'all', actActor: '', actLimit: 60,
+  chartDays: 14, live: true, covQ: '', covStatus: 'all', covOpen: new Set(), actActor: '', actLimit: 60,
   drawer: {}, yamlOpen: new Set(), armed: {}, busy: new Set(), drafts: {},
   detailSig: '', timer: null, booted: false,
 };
@@ -756,6 +765,7 @@ const ICONS = {
   target: '<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r=".7"/>',
   bot: '<rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9h.01M10 9h.01M1.5 8.5v2M14.5 8.5v2"/>',
   server: '<rect x="2" y="2.5" width="12" height="4.5" rx="1.2"/><rect x="2" y="9" width="12" height="4.5" rx="1.2"/><path d="M5 4.75h.01M5 11.25h.01"/>',
+  chevron: '<path d="M4 6l4 4 4-4"/>',
   ext: '<path d="M6 3.5h6.5V10M12.5 3.5l-8 8"/>',
   back: '<path d="M10 3.5 5.5 8l4.5 4.5"/>',
   gear: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>',
@@ -1071,7 +1081,14 @@ function detailHtml(p) {
   const id = esc(p.id), busy = S.busy.has(p.id) ? ' disabled' : '', d = S.drawer[p.id];
   const pr = safeUrl(p.pr_url);
   let callout = '';
-  if (p.status === 'merge_failed' && p.merge_error) callout = `<div class="callout bad">${icon('alert')}<div><b>Merge blocked.</b> ${esc(String(p.merge_error).replace(/^merge blocked:\s*/i, ''))}</div></div>`;
+  if (p.status === 'merge_failed' && p.merge_error) {
+    const why = String(p.merge_error).replace(/^merge blocked:\s*/i, '');
+    // The PR is gone or already closed: retrying can never succeed.
+    const dead = /not found|is closed|merged=true|not open/i.test(why);
+    callout = `<div class="callout bad">${icon('alert')}<div><b>Merge blocked.</b> ${esc(why)}
+      ${dead ? `<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>This PR no longer exists or is closed, so the proposal can never merge.</span>
+        <button class="btn btn-danger btn-sm" type="button" data-act="dismiss" data-id="${id}"${busy}>${icon('x')}Dismiss proposal</button></div>` : ''}</div></div>`;
+  }
   if (p.status === 'rejected') callout = `<div class="callout">${icon('ban')}<div><b>Rejected.</b> ${esc(p.reject_reason || 'No reason given.')}</div></div>`;
   if (p.status === 'validated' && p.validation) {
     const v = p.validation, ev = safeUrl(v.evidence_url);
@@ -1181,14 +1198,56 @@ function renderCoverage() {
     const html = esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
     return `<td class="${ci === cols.length - 1 ? 'wrap' : ''}">${html}</td>`;
   };
-  $('covTable').innerHTML = rows.length ? `<table class="t"><thead><tr>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map(i => `<tr>${(Array.isArray(i.row) ? i.row : cols.map(c => i.row[c])).map(cellHtml).join('')}</tr>`).join('')}</tbody></table>`
+  const col = (name, fb) => lc.indexOf(name) >= 0 ? lc.indexOf(name) : fb;
+  const repo = (S.version && S.version.repo) || 'Ctum0/detection-platform';
+  const find = f => f ? ` <a href="https://github.com/${esc(repo)}/search?q=${encodeURIComponent(f)}&type=code" target="_blank" rel="noopener noreferrer">Find in repo ${icon('ext', 'ic-sm')}</a>` : '';
+  const detail = i => {
+    const v = n => { const r = Array.isArray(i.row) ? i.row : cols.map(c => i.row[c]); return String(r[n] == null ? '' : r[n]).trim(); };
+    const code = s => s ? esc(s).replace(/`([^`]+)`/g, '<code>$1</code>') : '<span style="color:var(--ink-4)">none</span>';
+    const file = s => (s.match(/`([^`]+)`/) || [null, s.match(/[\w./-]+\.(?:ya?ml|spl)/i)?.[0] || ''])[1];
+    const sigma = v(col('sigma file', 4)), spl = v(col('spl file', 6));
+    return `<dl class="evidence">
+      <dt>Data source</dt><dd>${code(v(col('data source', 3)))}</dd>
+      <dt>Sigma file</dt><dd>${code(sigma)}${find(file(sigma))}</dd>
+      <dt>Wazuh rule</dt><dd>${code(v(col('wazuh rule', 5)))}</dd>
+      <dt>SPL file</dt><dd>${code(spl)}${find(file(spl))}</dd>
+      <dt>Validation</dt><dd>${code(i.status)}</dd>
+      <dt>Notes</dt><dd>${code(v(col('notes', 8)))}</dd></dl>`;
+  };
+  $('covTable').innerHTML = rows.length ? `<table class="t"><thead><tr><th scope="col"><span class="sr-only">Details</span></th>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(i => {
+      const open = S.covOpen.has(i.id), did = 'covd-' + esc(i.id).replace(/[^\w-]/g, '');
+      return `<tr data-cov-row="${esc(i.id)}"><td class="nowrap" style="width:1%;padding-right:0"><button class="link-btn cov-toggle" type="button" data-cov="${esc(i.id)}" aria-expanded="${open}" aria-controls="${did}" aria-label="Details for ${esc(i.id)} ${esc(i.code)}">${icon('chevron')}</button></td>${(Array.isArray(i.row) ? i.row : cols.map(c => i.row[c])).map(cellHtml).join('')}</tr>`
+        + `<tr class="cov-detail" id="${did}"${open ? '' : ' hidden'}><td colspan="${cols.length + 1}">${detail(i)}</td></tr>`;
+    }).join('')}</tbody></table>`
     : emptyHtml('search', 'No detections match.', 'Clear the filter to see the whole matrix.');
 }
+$('covTable').addEventListener('click', e => {
+  const b = e.target.closest('[data-cov]') || (!e.target.closest('a, button') && e.target.closest('[data-cov-row]'));
+  if (!b) return;
+  const id = b.dataset.cov || b.dataset.covRow;
+  S.covOpen.has(id) ? S.covOpen.delete(id) : S.covOpen.add(id);
+  renderCoverage();
+  const t = $('covTable').querySelector(`[data-cov="${CSS.escape(id)}"]`); if (t && b.matches('button')) t.focus();
+});
 $('covSearch').addEventListener('input', e => { S.covQ = e.target.value.trim(); renderCoverage(); });
 $('covStatus').addEventListener('change', e => { S.covStatus = e.target.value; renderCoverage(); });
 
 /* ================= runs ================= */
+function duration(from, to) {
+  const a = Date.parse(from), b = to ? Date.parse(to) : Date.now();
+  if (isNaN(a) || isNaN(b)) return '<span style="color:var(--ink-4)">–</span>';
+  const s = Math.max(0, Math.round((b - a) / 1000));
+  const txt = s < 60 ? s + 's' : s < 3600 ? Math.floor(s / 60) + 'm ' + (s % 60) + 's' : Math.floor(s / 3600) + 'h ' + Math.floor(s % 3600 / 60) + 'm';
+  return to ? esc(txt) : `<span style="color:var(--ink-3)">${esc(txt)} so far</span>`;
+}
+function proposalLink(pid) {
+  if (!pid) return '<span style="color:var(--ink-4)">–</span>';
+  const p = S.proposals.find(x => x.id === pid);
+  const href = `#/queue/${encodeURIComponent(pid)}`;
+  return p ? `<a href="${href}" style="display:inline-flex;align-items:center;gap:8px;color:var(--ink)"><span class="chip">${esc(p.technique)}</span><span style="min-width:0">${esc(p.title)}</span></a>`
+    : `<a href="${href}" class="mono" style="font-size:12px">${esc(pid)}</a>`;
+}
 function renderRuns() {
   if (!S.triggers) return;
   const ts = S.triggers.triggers || [];
@@ -1197,16 +1256,16 @@ function renderRuns() {
       `<br><button class="btn btn-primary" type="button" data-request>${icon('plus')}Request proposal</button>`);
     return;
   }
-  $('runsTable').innerHTML = `<table class="t"><thead><tr><th>Run</th><th>Status</th><th>Started</th><th>Finished</th><th>Result</th><th>Proposal</th></tr></thead><tbody>
+  $('runsTable').innerHTML = `<table class="t"><thead><tr><th>Run</th><th>Status</th><th>Started</th><th>Duration</th><th>Result</th><th>Proposal</th></tr></thead><tbody>
     ${ts.map(t => {
       const long = t.status === 'sent' && Date.now() - Date.parse(t.ts) > 30 * 60000;
       const pill = t.status === 'succeeded' ? '<span class="pill ok"><span class="dot"></span>Succeeded</span>'
         : t.status === 'failed' ? '<span class="pill bad"><span class="dot"></span>Failed</span>'
         : long ? '<span class="pill warn"><span class="dot"></span>No result reported</span>' : '<span class="pill accent"><span class="dot pulse"></span>Running</span>';
       return `<tr><td class="mono nowrap">${esc(t.id)}</td><td class="nowrap">${pill}</td><td class="nowrap" title="${esc(fmtTs(t.ts))}">${esc(ago(t.ts))}</td>
-        <td class="nowrap" title="${esc(fmtTs(t.completed_at))}">${t.completed_at ? esc(ago(t.completed_at)) : '<span style="color:var(--ink-4)">–</span>'}</td>
+        <td class="nowrap" title="${t.completed_at ? 'Finished ' + esc(fmtTs(t.completed_at)) : 'Still running'}">${duration(t.ts, t.completed_at)}</td>
         <td class="wrap">${esc(t.detail || '')}</td>
-        <td class="nowrap">${t.proposal_id ? `<a href="#/queue/${encodeURIComponent(t.proposal_id)}">Open ${icon('ext', 'ic-sm')}</a>` : '<span style="color:var(--ink-4)">–</span>'}</td></tr>`;
+        <td>${proposalLink(t.proposal_id)}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
 
@@ -1221,7 +1280,7 @@ function actLevel(a) {
 function feedRow(a, withTime) {
   const verb = String(a.action || '').replace(/^proposal\./, '').replace(/^propose\./, '').replace(/\./g, ' ');
   const t = new Date(a.ts);
-  return `<div class="feed-row${a.proposal_id ? ' link' : ''}"${a.proposal_id ? ` data-goto="${esc(a.proposal_id)}" title="Open proposal"` : ''}>
+  return `<div class="feed-row${a.proposal_id ? ' link' : ''}"${a.proposal_id ? ` data-goto="${esc(a.proposal_id)}" role="link" tabindex="0" title="Open proposal"` : ''}>
     ${withTime ? `<span class="tm">${isNaN(t) ? '' : t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
     <span class="dot ${actLevel(a)}"></span><span class="txt"><b>${esc(a.actor)}</b> ${esc(verb)} · ${esc(a.detail || '')}</span>
     ${withTime ? '' : `<span class="when" title="${esc(fmtTs(a.ts))}">${esc(ago(a.ts))}</span>`}</div>`;
@@ -1289,6 +1348,11 @@ const actions = {
     const p = findP(id);
     await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/approve`), `Merging PR #${p ? p.pr_number : ''}: CI gate running`);
   },
+  async dismiss(id) {
+    const p = findP(id);
+    const reason = ('Dismissed as dead: ' + String((p && p.merge_error) || '').replace(/^merge blocked:\s*/i, '')).slice(0, 300);
+    await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/reject`, { reason }), 'Proposal dismissed');
+  },
   async retry(id) { await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/retry`), 'Retrying merge'); },
   async reject(id) {
     const reason = (S.drafts['reason:' + id] || '').trim();
@@ -1349,7 +1413,8 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && $('gate').hidden) {
     e.preventDefault(); if (S.view !== 'queue') go('queue'); setTimeout(() => $('search').focus(), 0);
   }
-  if (e.key === 'Escape' && document.body.classList.contains('nav-open')) closeNav();
+  if (e.key === 'Escape' && document.body.classList.contains('nav-open')) { closeNav(); $('menuBtn').focus(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-goto]')) { e.preventDefault(); go('queue', e.target.dataset.goto); }
 });
 document.addEventListener('click', e => {
   const g = e.target.closest('[data-goto]'); if (g) { go('queue', g.dataset.goto); return; }
@@ -1382,8 +1447,12 @@ async function exportActivity(fmt) {
 
 /* ================= nav (mobile) ================= */
 function closeNav() { document.body.classList.remove('nav-open'); $('menuBtn').setAttribute('aria-expanded', 'false'); }
-$('menuBtn').addEventListener('click', () => { const open = document.body.classList.toggle('nav-open'); $('menuBtn').setAttribute('aria-expanded', String(open)); });
-$('scrim').addEventListener('click', closeNav);
+$('menuBtn').addEventListener('click', () => {
+  const open = document.body.classList.toggle('nav-open');
+  $('menuBtn').setAttribute('aria-expanded', String(open));
+  if (open) setTimeout(() => { const cur = document.querySelector('#sidebar [aria-current="page"]') || document.querySelector('#sidebar [data-nav]'); if (cur) cur.focus(); }, 0);
+});
+$('scrim').addEventListener('click', () => { closeNav(); $('menuBtn').focus(); });
 
 /* ================= loading ================= */
 async function loadProposals() {
@@ -1397,6 +1466,7 @@ async function loadActivity() { S.activity = await api('GET', '/api/activity?lim
 async function loadVersion() {
   try {
     const v = await api('GET', '/api/version'), b = v.build_info || {}, sha = b.git_sha || '';
+    S.version = b;
     $('buildInfo').textContent = 'v' + v.version + (sha && sha !== 'unknown' ? ' · ' + sha.slice(0, 7) : '');
     if (b.repo) { $('repoName').textContent = b.repo; $('repoLink').href = 'https://github.com/' + b.repo; $('repoLink').querySelector('.avatar').textContent = b.repo.charAt(0).toUpperCase(); }
   } catch (_) {}
