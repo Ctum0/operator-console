@@ -360,7 +360,9 @@ _client = httpx.AsyncClient(
 
 
 def _gh_headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+    # An empty token would yield "Bearer " (trailing space), which h11 rejects as
+    # an illegal header value, so unauthenticated public reads must omit it.
+    return {"Authorization": f"Bearer {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
 
 
 async def _gh_get(url: str, retries: int = 1) -> httpx.Response:
