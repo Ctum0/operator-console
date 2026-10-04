@@ -1,7 +1,10 @@
 services:
   operator-console:
     container_name: operator-console
-    build: .
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-}
     image: operator-console:latest
     restart: unless-stopped
     ports:
@@ -13,7 +16,11 @@ services:
       REPO: ${REPO:-Ctum0/detection-platform}
       WAZUH_HOST: ${WAZUH_HOST:-100.81.241.62}
       WAZUH_PORT: ${WAZUH_PORT:-1514}
-      GIT_SHA: ${GIT_SHA:-}
+      WAZUH_API_URL: ${WAZUH_API_URL:-}
+      WAZUH_API_USER: ${WAZUH_API_USER:-}
+      WAZUH_API_PASSWORD: ${WAZUH_API_PASSWORD:-}
+      WAZUH_API_VERIFY_TLS: ${WAZUH_API_VERIFY_TLS:-true}
+      COVERAGE_PATH: ${COVERAGE_PATH:-modules/detection-pipeline/docs/attack-matrix.md}
     volumes:
       - console-data:/data
     mem_limit: 256m

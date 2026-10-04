@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Detection Platform — Operator Console</title>
+<meta name="color-scheme" content="dark">
+<title>Operator Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='.5' y='.5' width='23' height='23' rx='6' fill='%2310243b' stroke='%2358a6ff' stroke-opacity='.5'/%3E%3Crect x='9' y='9' width='6' height='6' rx='2' fill='%2358a6ff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
@@ -15,6 +17,7 @@
   --elev: #191a1b;
   --border: rgba(255,255,255,0.05);
   --border-2: rgba(255,255,255,0.08);
+  --border-3: rgba(255,255,255,0.16);
   --ink: #f7f8f8;
   --ink-2: #d0d6e0;
   --ink-3: #8a8f98;
@@ -26,6 +29,9 @@
   --warn: #d29922;
   --bad: #f85149;
   --pending: #8b949e;
+  --ok-dim: rgba(63,185,80,0.08);
+  --warn-dim: rgba(210,153,34,0.08);
+  --bad-dim: rgba(248,81,73,0.08);
   --r: 8px;
   --r-sm: 6px;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
@@ -43,10 +49,9 @@ body {
   letter-spacing: -0.011em;
   font-feature-settings: "cv01", "ss03";
   font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
 }
 ::selection { background: rgba(88,166,255,0.28); color: var(--ink); }
-
-/* thin dark scrollbars */
 * { scrollbar-width: thin; scrollbar-color: #2a2c30 transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -56,8 +61,11 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-hover); }
 :focus-visible { outline: 2px solid rgba(88,166,255,0.45); outline-offset: 1px; border-radius: 4px; }
+code, .mono { font-family: var(--mono); letter-spacing: 0; }
+[hidden] { display: none !important; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
-/* ============ HEADER (glass allowed here) ============ */
+/* ============ HEADER (glass allowed here only) ============ */
 .topbar {
   position: sticky; top:0; z-index:20;
   height: 56px;
@@ -75,239 +83,240 @@ a:hover { color: var(--accent-hover); }
   border:1px solid rgba(88,166,255,0.3);
   display:grid; place-items:center;
 }
-.brand-mark span {
-  width:6px; height:6px; border-radius:2px; background:var(--accent);
-  display:block;
-}
+.brand-mark span { width:6px; height:6px; border-radius:2px; background:var(--accent); display:block; }
 .brand-name { font-weight:590; font-size:13px; letter-spacing:-0.02em; color:var(--ink); }
 .brand-env {
   font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
   padding:2px 7px; border:1px solid var(--border-2); border-radius:5px;
-  background: rgba(255,255,255,0.02);
-  letter-spacing:0;
+  background: rgba(255,255,255,0.02); letter-spacing:0;
 }
-/* breadcrumb-style nav */
-.crumbs { display:flex; align-items:center; gap:8px; min-width:0; }
-.crumbs a {
-  color: var(--ink-3); font-size:13px; font-weight:510;
-  padding:4px 8px; border-radius:6px; white-space:nowrap;
-}
-.crumbs a:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
-.crumbs a[aria-current="page"] { color: var(--ink); }
-.crumbs a[aria-current="page"]:hover { background: transparent; color: var(--ink); cursor: default; }
-.crumb-sep { color: var(--ink-4); font-size:12px; flex:none; user-select:none; }
+.crumbs { display:flex; align-items:center; gap:8px; min-width:0; color:var(--ink-3); font-size:13px; font-weight:510; }
+.crumbs .here { color: var(--ink); }
+.crumb-sep { color: var(--ink-4); font-size:12px; user-select:none; }
 .topbar-spacer { flex:1; }
 
-/* status pills */
-.pill-ok {
+/* status pill */
+.pill {
   display:inline-flex; align-items:center; gap:7px; flex:none;
-  font-size:12px; font-weight:510; color:var(--ok);
-  padding:3px 11px 3px 9px;
-  border:1px solid rgba(63,185,80,0.25); border-radius:999px;
-  background: rgba(63,185,80,0.08);
-  letter-spacing:-0.005em;
+  font-size:12px; font-weight:510; color:var(--pending);
+  padding:3px 11px 3px 9px; border:1px solid var(--border-2); border-radius:999px;
+  background: rgba(255,255,255,0.02); letter-spacing:-0.005em; white-space:nowrap;
 }
-.pill-warn { color:var(--warn); border-color:rgba(210,153,34,0.25); background:rgba(210,153,34,0.08); }
-.dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex:none; }
-.dot-ok { background:var(--ok); }
-.dot-warn { background:var(--warn); }
-.dot-bad { background:var(--bad); }
-.dot-pending { background:var(--pending); }
-.dot-pulse { position:relative; }
-.dot-pulse::after {
+.pill.ok { color:var(--ok); border-color:rgba(63,185,80,0.25); background:var(--ok-dim); }
+.pill.warn { color:var(--warn); border-color:rgba(210,153,34,0.25); background:var(--warn-dim); }
+.pill.bad { color:var(--bad); border-color:rgba(248,81,73,0.25); background:var(--bad-dim); }
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex:none; background:var(--pending); }
+.dot.ok { background:var(--ok); }
+.dot.warn { background:var(--warn); }
+.dot.bad { background:var(--bad); }
+.dot.accent { background:var(--accent); }
+.dot.pulse { position:relative; }
+.dot.pulse::after {
   content:""; position:absolute; inset:0; border-radius:50%;
   background:inherit; animation:pulse 2.4s ease-out infinite;
 }
-@keyframes pulse {
-  0% { transform:scale(1); opacity:0.5; }
-  70% { transform:scale(2.2); opacity:0; }
-  100% { transform:scale(2.2); opacity:0; }
-}
+@keyframes pulse { 0% { transform:scale(1); opacity:0.5; } 70%,100% { transform:scale(2.2); opacity:0; } }
 
 /* ============ BUTTONS ============ */
 .btn {
   font-family:var(--sans); font-size:12.5px; font-weight:510;
-  height:30px; padding:0 13px;
-  border-radius: var(--r-sm); cursor:pointer;
+  height:30px; padding:0 13px; border-radius: var(--r-sm); cursor:pointer;
   border:1px solid transparent; letter-spacing:-0.005em;
   font-feature-settings: "cv01", "ss03";
   transition: background .12s ease, border-color .12s ease, color .12s ease;
-  display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  white-space:nowrap;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;
 }
 .btn:disabled { opacity:0.55; cursor:not-allowed; }
-.btn svg { flex:none; }
+.btn-sm { height:26px; padding:0 10px; font-size:12px; }
 .btn-primary {
-  background:var(--accent); color:#04070c; border-color:var(--accent);
-  font-weight:590;
+  background:var(--accent); color:#04070c; border-color:var(--accent); font-weight:590;
   box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
 }
 .btn-primary:hover:not(:disabled) { background:var(--accent-hover); border-color:var(--accent-hover); }
-.btn-primary:active:not(:disabled) { background:#5ea4f5; }
-.btn-ghost {
-  background:transparent; color:var(--ink-2); border-color:var(--border-2);
-}
-.btn-ghost:hover:not(:disabled) { color:var(--ink); border-color:rgba(255,255,255,0.16); background:rgba(255,255,255,0.03); }
-.btn-approve {
-  background:rgba(63,185,80,0.15); color:#4ecb61;
-  border-color:rgba(63,185,80,0.35); font-weight:590;
-}
+.btn-ghost { background:transparent; color:var(--ink-2); border-color:var(--border-2); }
+.btn-ghost:hover:not(:disabled) { color:var(--ink); border-color:var(--border-3); background:rgba(255,255,255,0.03); }
+.btn-approve { background:rgba(63,185,80,0.15); color:#4ecb61; border-color:rgba(63,185,80,0.35); font-weight:590; }
 .btn-approve:hover:not(:disabled) { background:rgba(63,185,80,0.25); border-color:rgba(63,185,80,0.5); }
-.btn-approve:active:not(:disabled) { background:rgba(63,185,80,0.32); }
-.btn-reject {
-  background:transparent; color:var(--ink-2); border-color:var(--border-2);
+.btn-approve.armed { background:var(--ok); color:#04130a; border-color:var(--ok); }
+.btn-reject { background:transparent; color:var(--ink-2); border-color:var(--border-2); }
+.btn-reject:hover:not(:disabled) { color:var(--bad); border-color:rgba(248,81,73,0.35); background:var(--bad-dim); }
+.btn-danger { background:rgba(248,81,73,0.14); color:#ff7b72; border-color:rgba(248,81,73,0.35); font-weight:590; }
+.btn-danger:hover:not(:disabled) { background:rgba(248,81,73,0.22); }
+.btn-link {
+  background:none; border:none; color:var(--ink-3); font:inherit; font-size:12px; cursor:pointer;
+  padding:2px 4px; border-radius:4px; display:inline-flex; align-items:center; gap:5px;
 }
-.btn-reject:hover:not(:disabled) {
-  color:var(--bad); border-color:rgba(248,81,73,0.35); background:rgba(248,81,73,0.08);
-}
-.btn-reject:active:not(:disabled) { background:rgba(248,81,73,0.14); }
+.btn-link:hover { color:var(--ink); }
 
-/* ============ LAYOUT — main + fixed sidebar ============ */
+/* ============ FORMS ============ */
+.input {
+  height:30px; background:var(--elev); border:1px solid var(--border-2);
+  color:var(--ink); padding:0 10px; border-radius:var(--r-sm);
+  font-size:12.5px; font-family:var(--sans); min-width:0; width:100%;
+  transition: border-color .12s ease;
+}
+.input:focus { outline:none; border-color:rgba(88,166,255,0.5); }
+.input::placeholder { color:var(--ink-4); }
+.input.mono { font-family:var(--mono); font-size:12px; }
+textarea.input { height:auto; min-height:56px; padding:7px 10px; resize:vertical; line-height:1.5; }
+input[type="datetime-local"].input { color-scheme: dark; }
+.field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.field label { font-size:11px; color:var(--ink-3); font-weight:510; }
+.field label small { color:var(--ink-4); font-weight:400; }
+
+/* ============ LAYOUT ============ */
 .shell {
-  display:grid;
-  grid-template-columns: minmax(0,1fr) 344px;
-  gap:16px;
-  max-width: 1440px;
-  margin:0 auto;
-  padding: 24px;
-  align-items:start;
+  display:grid; grid-template-columns: minmax(0,1fr) 344px; gap:16px;
+  max-width: 1440px; margin:0 auto; padding: 24px; align-items:start;
 }
 main { min-width:0; }
 
-/* ============ QUEUE HEAD ============ */
-.queue-head {
-  display:flex; align-items:baseline; gap:12px; margin-bottom:16px; flex-wrap:wrap;
-}
-.queue-head h1 {
-  font-size:17px; font-weight:590; letter-spacing:-0.022em; color:var(--ink);
-  line-height:1.3;
-}
-.queue-head .count {
+/* queue head + toolbar */
+.queue-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+.queue-head h1 { font-size:17px; font-weight:590; letter-spacing:-0.022em; color:var(--ink); line-height:1.3; }
+.count {
   color:var(--ink-3); font-size:12px; font-family:var(--mono);
-  padding:2px 8px; border:1px solid var(--border-2); border-radius:999px;
-  background:rgba(255,255,255,0.02);
+  padding:2px 8px; border:1px solid var(--border-2); border-radius:999px; background:rgba(255,255,255,0.02);
 }
-.queue-head .sep { color:var(--ink-4); font-size:12px; }
-.queue-head .disposition { color:var(--ink-3); font-size:12px; }
-.queue-head .disposition b { color:var(--ok); font-weight:590; }
+.disposition { color:var(--ink-3); font-size:12px; }
+.disposition b { font-weight:590; color:var(--ink-2); }
+.toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.tabs {
+  display:flex; gap:2px; padding:2px; border:1px solid var(--border-2); border-radius:var(--r);
+  background:var(--panel); overflow-x:auto; min-width:0; flex:0 1 auto;
+}
+.tab {
+  font:inherit; font-size:12px; font-weight:510; color:var(--ink-3); background:none; border:none;
+  height:26px; padding:0 10px; border-radius:var(--r-sm); cursor:pointer; white-space:nowrap;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.tab:hover { color:var(--ink); }
+.tab[aria-selected="true"] { color:var(--ink); background:var(--elev); }
+.tab .n { font-family:var(--mono); font-size:10.5px; color:var(--ink-4); }
+.tab[aria-selected="true"] .n { color:var(--ink-3); }
+.search { position:relative; flex:1; min-width:160px; max-width:320px; margin-left:auto; }
+.search .input { padding-left:30px; }
+.search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--ink-4); pointer-events:none; }
+.search kbd {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-family:var(--mono); font-size:10px; color:var(--ink-4); border:1px solid var(--border-2);
+  border-radius:4px; padding:0 5px; line-height:16px;
+}
 
-/* ============ CARDS / PROPOSALS ============ */
+/* ============ PROPOSAL CARDS ============ */
 .card {
-  background: var(--panel);
-  border:1px solid var(--border);
-  border-radius: var(--r);
-  margin-bottom:16px;
-  overflow:hidden;
+  background: var(--panel); border:1px solid var(--border); border-radius: var(--r);
+  margin-bottom:16px; overflow:hidden; transition: border-color .4s ease;
 }
-.proposal-head {
-  display:flex; align-items:flex-start; gap:12px;
-  padding:16px 16px 0;
-}
+.card.flash { border-color: rgba(88,166,255,0.55); }
+.proposal-head { display:flex; align-items:flex-start; gap:12px; padding:16px 16px 0; }
 .proposal-id {
-  font-family:var(--mono); font-size:11px; color:var(--accent);
-  letter-spacing:0; flex:none; padding-top:3px;
-  font-variant-numeric: tabular-nums;
+  font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:0;
+  flex:none; padding-top:3px; min-width:64px;
 }
 .proposal-title { flex:1; min-width:0; }
-.proposal-title h2 {
-  font-size:14px; font-weight:590; letter-spacing:-0.014em; color:var(--ink);
-  line-height:1.4;
+.proposal-title h2 { font-size:14px; font-weight:590; letter-spacing:-0.014em; color:var(--ink); line-height:1.4; overflow-wrap:anywhere; }
+.sub { color:var(--ink-3); font-size:12px; margin-top:3px; display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; }
+.sub code {
+  font-size:11px; color:var(--ink-3); background:rgba(255,255,255,0.03); padding:1px 5px; border-radius:4px;
+  overflow-wrap:anywhere;
 }
-.proposal-title .sub {
-  color:var(--ink-3); font-size:12px; margin-top:3px;
+.badge {
+  font-family:var(--mono); font-size:10.5px; font-weight:510; padding:2px 7px; border-radius:5px;
+  letter-spacing:0.04em; border:1px solid; flex:none; margin-top:1px; text-transform:uppercase;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
 }
-.proposal-title .sub code {
-  font-family:var(--mono); font-size:11px; color:var(--ink-3);
-  background:rgba(255,255,255,0.03); padding:1px 5px; border-radius:4px;
-}
-.severity {
-  font-family:var(--mono); font-size:10.5px; font-weight:510;
-  padding:2px 7px; border-radius:5px; letter-spacing:0.04em;
-  border:1px solid; flex:none; margin-top:1px;
-  text-transform:uppercase;
-}
-.sev-high { color:var(--bad); border-color:rgba(248,81,73,0.3); background:rgba(248,81,73,0.08); }
-.sev-med { color:var(--warn); border-color:rgba(210,153,34,0.3); background:rgba(210,153,34,0.08); }
-.sev-low { color:var(--ok); border-color:rgba(63,185,80,0.3); background:rgba(63,185,80,0.08); }
+.badge .dot { width:6px; height:6px; }
+.b-pending { color:var(--pending); border-color:rgba(139,148,158,0.3); background:rgba(139,148,158,0.08); }
+.b-merging { color:var(--accent); border-color:rgba(88,166,255,0.3); background:var(--accent-dim); }
+.b-merged { color:var(--ok); border-color:rgba(63,185,80,0.3); background:var(--ok-dim); }
+.b-validated { color:#04130a; border-color:var(--ok); background:var(--ok); }
+.b-failed { color:var(--bad); border-color:rgba(248,81,73,0.3); background:var(--bad-dim); }
+.b-rejected { color:var(--ink-3); border-color:var(--border-2); background:transparent; }
 
-.rationale {
-  padding:10px 16px 14px;
-  color:var(--ink-3); font-size:12.5px;
-  max-width:68ch;
-}
-.rationale b { color:var(--ink-2); font-weight:510; }
+.rationale { padding:10px 16px 14px; color:var(--ink-3); font-size:12.5px; max-width:78ch; overflow-wrap:anywhere; white-space:pre-line; }
 
-/* ============ YAML VIEW ============ */
-.yaml-view {
-  margin:0 16px 14px;
-  position:relative;
-}
+/* YAML */
+.yaml-view { margin:0 16px 14px; position:relative; }
 .yaml-view pre {
-  font-family:var(--mono);
-  font-size:12px; line-height:1.65;
-  color:#b8c2cc;
-  background:var(--elev);
-  border:1px solid var(--border-2);
-  border-radius: var(--r-sm);
-  padding:12px 14px;
-  overflow-x:auto;
-  max-height:240px;
-  overflow-y:auto;
-  letter-spacing:0;
-  font-variant-numeric: normal;
+  font-family:var(--mono); font-size:12px; line-height:1.65; color:#b8c2cc;
+  background:var(--elev); border:1px solid var(--border-2); border-radius: var(--r-sm);
+  padding:12px 14px; overflow:auto; max-height:240px; letter-spacing:0; font-variant-numeric: normal;
 }
-.yaml-view pre .k { color:rgba(88,166,255,0.85); }       /* keys — accent hue */
-.yaml-view pre .s { color:#a5d6a0; }                      /* strings */
-.yaml-view pre .c { color:var(--ink-4); font-style:italic; } /* comments */
-.yaml-view pre .p { color:var(--ink); font-weight:500; }  /* punctuation/ids */
-.yaml-view pre .d { color:var(--ink-2); }                 /* detection values */
+.yaml-view.expanded pre { max-height:none; }
+.yaml-view pre .k { color:rgba(88,166,255,0.85); }
+.yaml-view pre .s { color:#a5d6a0; }
+.yaml-view pre .c { color:var(--ink-4); font-style:italic; }
 .yaml-actions { position:absolute; top:8px; right:8px; display:flex; gap:4px; }
-.yaml-toggle, .yaml-copy {
-  font-family:var(--mono); font-size:10.5px; letter-spacing:0;
-  color:var(--ink-3); background:rgba(25,26,27,0.92);
-  border:1px solid var(--border-2); border-radius:5px;
-  height:22px; padding:0 8px; cursor:pointer;
-  transition: color .12s ease, border-color .12s ease;
+.yaml-btn {
+  font-family:var(--mono); font-size:10.5px; letter-spacing:0; color:var(--ink-3);
+  background:rgba(25,26,27,0.92); border:1px solid var(--border-2); border-radius:5px;
+  height:22px; padding:0 8px; cursor:pointer; transition: color .12s ease, border-color .12s ease;
 }
-.yaml-toggle:hover, .yaml-copy:hover { color:var(--ink); border-color:rgba(255,255,255,0.16); }
+.yaml-btn:hover { color:var(--ink); border-color:var(--border-3); }
+
+/* callouts: merge error, rejection, validation evidence */
+.callout {
+  margin:0 16px 14px; padding:10px 12px; border-radius:var(--r-sm); font-size:12px;
+  border:1px solid var(--border-2); background:rgba(255,255,255,0.015); color:var(--ink-3);
+  overflow-wrap:anywhere;
+}
+.callout b { color:var(--ink-2); font-weight:590; }
+.callout.bad { border-color:rgba(248,81,73,0.25); background:var(--bad-dim); }
+.callout.bad b { color:var(--bad); }
+.callout.ok { border-color:rgba(63,185,80,0.25); background:var(--ok-dim); }
+.callout.ok b { color:var(--ok); }
+.evidence { display:grid; grid-template-columns: max-content 1fr; gap:3px 14px; margin-top:6px; }
+.evidence dt { color:var(--ink-4); }
+.evidence dd { color:var(--ink-2); font-family:var(--mono); font-size:11.5px; min-width:0; overflow-wrap:anywhere; }
+
+/* lifecycle steps */
+.steps { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-4); }
+.step { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.step .dot { width:6px; height:6px; background:transparent; border:1px solid var(--ink-4); }
+.step.done { color:var(--ink-2); }
+.step.done .dot { background:var(--ok); border-color:var(--ok); }
+.step.now { color:var(--ink); }
+.step.now .dot { background:var(--accent); border-color:var(--accent); }
+.step.fail { color:var(--bad); }
+.step.fail .dot { background:var(--bad); border-color:var(--bad); }
+.step-line { width:14px; height:1px; background:var(--border-2); flex:none; }
 
 .proposal-foot {
-  display:flex; align-items:center; gap:8px;
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   min-height:54px; padding:11px 16px;
-  border-top:1px solid var(--border);
-  background:rgba(255,255,255,0.015);
+  border-top:1px solid var(--border); background:rgba(255,255,255,0.015);
 }
-.proposal-foot .meta {
-  color:var(--ink-4); font-size:11.5px;
-  display:flex; gap:14px; margin-right:auto; min-width:0; flex-wrap:wrap;
-}
-.proposal-foot .meta span b { color:var(--ink-2); font-weight:510; font-variant-numeric:tabular-nums; }
-.proposal-foot .meta .rule { font-family:var(--mono); font-size:11px; letter-spacing:0; }
-.proposal-foot input {
-  flex:1; min-width:120px; height:30px;
-  background:var(--elev); border:1px solid var(--border-2);
-  color:var(--ink); padding:0 10px; border-radius:6px;
-  font-size:12px; font-family:var(--sans);
-}
-.proposal-foot input::placeholder { color:var(--ink-4); }
-.decision {
-  font-size:12px; font-weight:590;
-  height:30px; padding:0 12px; border-radius:var(--r-sm);
-  display:inline-flex; align-items:center;
-}
-.decision-approved { color:var(--ok); background:rgba(63,185,80,0.1); border:1px solid rgba(63,185,80,0.25); }
-.decision-rejected { color:var(--bad); background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.25); }
-.time { font-size:11px; color:var(--ink-4); font-family:var(--mono); letter-spacing:0; flex:none; }
+.proposal-foot .meta { display:flex; gap:12px; align-items:center; margin-right:auto; min-width:0; flex-wrap:wrap; }
+.working { font-size:12px; color:var(--accent); display:inline-flex; align-items:center; gap:8px; }
 
-/* empty / loading states */
-.empty-state {
-  padding:32px 16px; text-align:center; color:var(--ink-3); font-size:12.5px;
+/* drawers (reject / validate / notes) */
+.drawer { border-top:1px solid var(--border); padding:12px 16px 14px; background:rgba(255,255,255,0.01); }
+.drawer-title { font-size:11px; font-weight:590; color:var(--ink-3); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:10px; }
+.form-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+.form-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; margin-bottom:10px; }
+.form-actions { display:flex; gap:8px; justify-content:flex-end; }
+.form-hint { font-size:11.5px; color:var(--ink-4); margin-right:auto; align-self:center; }
+
+.notes { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.note { display:flex; gap:10px; font-size:12.5px; }
+.note-avatar {
+  width:22px; height:22px; border-radius:6px; flex:none; display:grid; place-items:center;
+  background:var(--elev); border:1px solid var(--border-2); color:var(--ink-3);
+  font-size:10px; font-weight:590; text-transform:uppercase;
 }
+.note-body { min-width:0; }
+.note-meta { font-size:11px; color:var(--ink-4); }
+.note-meta b { color:var(--ink-2); font-weight:590; }
+.note-text { color:var(--ink-2); white-space:pre-wrap; overflow-wrap:anywhere; }
+
+/* empty / loading */
+.empty-state { padding:40px 16px; text-align:center; color:var(--ink-3); font-size:12.5px; }
 .empty-state::before {
   content:""; display:block; width:32px; height:32px; margin:0 auto 12px;
-  border-radius:8px; border:1px dashed var(--border-2);
-  background:rgba(255,255,255,0.02);
+  border-radius:8px; border:1px dashed var(--border-2); background:rgba(255,255,255,0.02);
 }
+.empty-state b { color:var(--ink-2); font-weight:590; display:block; margin-bottom:2px; }
 .skeleton { position:relative; overflow:hidden; background:rgba(255,255,255,0.03); border-radius:6px; }
 .skeleton::after {
   content:""; position:absolute; inset:0;
@@ -315,606 +324,810 @@ main { min-width:0; }
   animation:shimmer 1.4s infinite;
 }
 @keyframes shimmer { 0% { transform:translateX(-100%);} 100% { transform:translateX(100%);} }
+.sk-card { height:180px; margin-bottom:16px; border-radius:var(--r); }
+.sk-row { height:14px; margin:10px 0; }
+.error-line { color:var(--bad); font-size:12px; }
 
 /* ============ SIDEBAR ============ */
 aside { min-width:0; }
-.panel {
-  background: var(--panel);
-  border:1px solid var(--border);
-  border-radius: var(--r);
-  padding:16px;
-  margin-bottom:16px;
+.panel { background: var(--panel); border:1px solid var(--border); border-radius: var(--r); padding:16px; margin-bottom:16px; min-width:0; }
+.panel-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.panel-head h3 { font-size:10.5px; font-weight:590; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-3); }
+.panel-head .aside-meta { margin-left:auto; font-size:11px; color:var(--ink-4); font-family:var(--mono); }
+.tag {
+  font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:4px; border:1px solid;
+  letter-spacing:0.02em; text-transform:uppercase;
 }
-.panel h3 {
-  font-size:10.5px; font-weight:590; letter-spacing:0.06em;
-  text-transform:uppercase; color:var(--ink-3);
-  margin-bottom:12px;
-}
-.panel h3 small { color:var(--ink-4); font-weight:400; letter-spacing:0; text-transform:none; }
+.tag.warn { color:var(--warn); border-color:rgba(210,153,34,0.3); background:var(--warn-dim); }
 
-.health-row {
-  display:flex; align-items:center; gap:10px;
-  min-height:30px; font-size:12.5px;
+.health-row { display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+.health-row:last-child { border-bottom:none; padding-bottom:0; }
+.health-row:first-child { padding-top:0; }
+.health-row .dot { margin-top:5px; }
+.health-row .body { min-width:0; flex:1; }
+.health-row .name { color:var(--ink-2); font-size:12.5px; display:flex; gap:8px; align-items:baseline; }
+.health-row .name .st { margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-4); }
+.health-row .detail {
+  font-family:var(--mono); font-size:11px; color:var(--ink-3); letter-spacing:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.health-row .name { color:var(--ink-2); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.health-row .val {
-  font-family:var(--mono); font-size:11px; color:var(--ink-3);
-  letter-spacing:0; text-align:right; flex:none; margin-left:auto;
-  font-variant-numeric: tabular-nums;
-}
-.health-row.stuck .name { color:var(--warn); }
-.health-row .failures { color:var(--bad); }
 
-.cov-table { width:100%; border-collapse:collapse; }
-.cov-table th {
-  text-align:left; font-size:10px; font-weight:510;
-  color:var(--ink-4); letter-spacing:0.06em; text-transform:uppercase;
-  padding:0 0 8px;
-  border-bottom:1px solid var(--border-2);
+.cov-summary { display:flex; align-items:baseline; gap:8px; margin-bottom:8px; }
+.cov-summary .big { font-size:20px; font-weight:590; color:var(--ink); letter-spacing:-0.02em; }
+.cov-summary .of { color:var(--ink-3); font-size:12px; }
+.cov-bar { display:flex; height:4px; border-radius:2px; overflow:hidden; background:rgba(255,255,255,0.07); margin-bottom:12px; }
+.cov-bar i { display:block; height:100%; }
+.cov-bar .ok { background:var(--ok); }
+.cov-bar .warn { background:var(--warn); }
+.cov-list { list-style:none; }
+.cov-list li {
+  display:grid; grid-template-columns: 56px minmax(0,1fr) auto; gap:8px; align-items:center;
+  padding:6px 0; border-bottom:1px solid var(--border); font-size:12px;
 }
-.cov-table th:last-child, .cov-table td:last-child { text-align:right; }
-.cov-table td {
-  padding:8px 0; font-size:12.5px; color:var(--ink-2);
-  border-bottom:1px solid var(--border);
-  vertical-align:middle; white-space:nowrap;
-}
-.cov-table tr:last-child td { border-bottom:none; }
-.cov-table .n {
-  font-family:var(--mono); font-size:11.5px; color:var(--ink-3);
-  font-variant-numeric: tabular-nums; letter-spacing:0;
-}
-.cov-table .dot { margin-right:6px; vertical-align:-1px; }
-.cov-bar {
-  position:relative; height:4px; border-radius:2px;
-  background:rgba(255,255,255,0.07);
-  width:64px; display:inline-block; vertical-align:middle;
-}
-.cov-bar i {
-  position:absolute; inset:0 auto 0 0; border-radius:2px; background:var(--accent);
-}
-.cov-bar.low i { background:var(--warn); }
+.cov-list li:last-child { border-bottom:none; }
+.cov-list .id { font-family:var(--mono); font-size:10.5px; color:var(--ink-4); }
+.cov-list .tech { color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cov-list .tech code { color:var(--ink-3); font-size:11px; margin-right:4px; }
+.cov-list .st { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-3); white-space:nowrap; }
+.cov-list .st .dot { width:6px; height:6px; }
+.panel-foot { margin-top:10px; font-size:11px; color:var(--ink-4); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.panel-foot a { color:var(--ink-3); }
+.panel-foot a:hover { color:var(--ink); }
 
-/* activity feed */
-.feed { min-width:0; }
-.feed-item {
-  display:flex; gap:10px; align-items:flex-start;
-  min-height:38px; padding:9px 0;
-  border-bottom:1px solid var(--border);
-  font-size:12px;
-}
+.feed-item { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
 .feed-item:last-child { border-bottom:none; padding-bottom:0; }
-.feed-item:first-of-type { padding-top:0; }
-.feed-item .dot { margin-top:5px; }
-.feed-item .txt { color:var(--ink-3); min-width:0; }
+.feed-item:first-child { padding-top:0; }
+.feed-item .dot { margin-top:5px; width:6px; height:6px; }
+.feed-item .txt { color:var(--ink-3); min-width:0; overflow-wrap:anywhere; }
 .feed-item .txt b { color:var(--ink-2); font-weight:510; }
-.feed-item .txt code {
-  font-family:var(--mono); font-size:10.5px; color:var(--ink-3); letter-spacing:0;
-  background:rgba(255,255,255,0.03); padding:1px 4px; border-radius:4px;
+.feed-item .txt code { font-size:10.5px; color:var(--ink-3); background:rgba(255,255,255,0.03); padding:1px 4px; border-radius:4px; }
+.feed-item .when { display:block; margin-top:2px; font-family:var(--mono); font-size:10.5px; color:var(--ink-4); }
+.feed-item.linkable { cursor:pointer; }
+.feed-item.linkable:hover .txt b { color:var(--accent); }
+
+/* toasts */
+.toasts { position:fixed; bottom:24px; right:24px; z-index:60; display:flex; flex-direction:column; gap:8px; align-items:flex-end; pointer-events:none; }
+.toast {
+  pointer-events:auto; background:var(--elev); border:1px solid var(--border-2); border-left:2px solid var(--ok);
+  color:var(--ink-2); padding:10px 14px; border-radius:var(--r); font-size:12.5px; max-width:380px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45); animation: toast-in .18s ease-out;
 }
-.feed-item .when {
-  display:block; margin-top:3px;
-  font-family:var(--mono); font-size:10.5px; color:var(--ink-4); letter-spacing:0;
-}
+.toast.bad { border-left-color:var(--bad); }
+@keyframes toast-in { from { transform:translateY(6px); opacity:0; } to { transform:none; opacity:1; } }
+
+/* token gate */
+.gate { position:fixed; inset:0; z-index:50; background:var(--bg); display:grid; place-items:center; padding:16px; }
+.gate-card { width:100%; max-width:360px; background:var(--panel); border:1px solid var(--border-2); border-radius:var(--r); padding:24px; }
+.gate-card .brand { margin-bottom:18px; }
+.gate-card p { font-size:12.5px; color:var(--ink-3); margin-bottom:14px; }
+.gate-card .btn { width:100%; margin-top:10px; height:34px; }
+.gate-card .error-line { min-height:18px; margin-top:8px; }
 
 /* ============ RESPONSIVE ============ */
-@media (max-width: 1180px) {
-  .shell { grid-template-columns: minmax(0,1fr) 320px; padding:20px; }
-}
+@media (max-width: 1180px) { .shell { grid-template-columns: minmax(0,1fr) 320px; padding:20px; } }
 @media (max-width: 1020px) {
   .shell { grid-template-columns: minmax(0,1fr); }
   aside { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
   aside .panel { margin-bottom:0; }
-  .crumbs a:not([aria-current="page"]) { display:none; }
-  .crumb-sep { display:none; }
+  .crumbs { display:none; }
+}
+@media (max-width: 720px) {
+  .toolbar { flex-direction:column; align-items:stretch; }
+  .search { max-width:none; margin-left:0; }
+  .form-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .topbar { padding:0 16px; gap:10px; }
-  .brand-env, .topbar .btn-ghost { display:none; }
+  .brand-env, #lockBtn, .pill .label { display:none; }
   .shell { padding:16px; }
   aside { grid-template-columns: 1fr; }
-  .queue-head .disposition { display:none; }
+  .disposition { display:none; }
+  .proposal-head { flex-wrap:wrap; }
+  .proposal-id { min-width:0; }
+  .toasts { left:16px; right:16px; bottom:16px; align-items:stretch; }
+  .toast { max-width:none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dot-pulse::after { display:none; }
-  .skeleton::after { animation:none; }
+  .dot.pulse::after, .skeleton::after { animation:none; display:none; }
+  .toast { animation:none; }
 }
 </style>
 </head>
 <body>
 
-<!-- ============ HEADER ============ -->
 <header class="topbar">
   <div class="brand">
     <div class="brand-mark"><span></span></div>
     <span class="brand-name">Detection Platform</span>
-    <span class="brand-env">Kestrel SOC</span>
+    <span class="brand-env" id="buildInfo" title="Console version">—</span>
   </div>
   <nav class="crumbs" aria-label="Breadcrumb">
-    <a href="#">Detections</a>
-    <span class="crumb-sep">/</span>
-    <a href="#" aria-current="page">Review queue</a>
+    <span>Detections</span><span class="crumb-sep">/</span><span class="here" aria-current="page">Review queue</span>
   </nav>
-  <span class="pill-ok" title="Ingest pipeline last heartbeat 14s ago">
-    <span class="dot dot-ok"></span> Pipeline healthy
-  </span>
+  <span class="pill" id="healthPill" role="status"><span class="dot"></span><span class="label">Checking pipeline…</span></span>
   <div class="topbar-spacer"></div>
-  <button class="btn btn-ghost" title="Rules excluded from auto-proposal">
-    Suppression list
-  </button>
-  <button class="btn btn-primary" id="requestBtn">
-    Request Proposal
-  </button>
+  <button class="btn btn-ghost" id="lockBtn" type="button" title="Forget the token on this browser">Lock</button>
+  <button class="btn btn-primary" id="requestBtn" type="button" title="Ask the AI detection engineer for a new proposal">Request proposal</button>
 </header>
 
-<!-- ============ SHELL ============ -->
 <div class="shell">
   <main>
     <div class="queue-head">
       <h1>Review queue</h1>
-      <span class="count" id="queueCount">3 pending</span>
-      <span class="sep">·</span>
-      <span class="disposition">Session disposition: <b>2 approved</b>, 1 rejected, 0 revoked</span>
+      <span class="count" id="queueCount">…</span>
+      <span class="disposition" id="disposition"></span>
     </div>
-
-    <!-- PROPOSAL 1: pending -->
-    <article class="card proposal">
-      <div class="proposal-head">
-        <span class="proposal-id">PRP-0417</span>
-        <div class="proposal-title">
-          <h2>LSASS memory access via signed binary</h2>
-          <div class="sub">Source: <code>procmon-lab</code> · covers <code>T1003.001</code> · proposed from 41 correlated events</div>
-        </div>
-        <span class="severity sev-high">HIGH</span>
-      </div>
-      <p class="rationale">
-        Model flagged repeated memory access and handle acquisition against <b>lsass.exe</b>
-        accompanied by trailing <b>rundll32.exe</b> child processes on three lab hosts.
-        Existing coverage only triggers on standalone credential dumping tools; this proposal
-        extends detection to signed-binary proxies.
-      </p>
-      <div class="yaml-view">
-        <pre id="yaml1"><span class="c"># PRP-0417 · prod-eligible · false-positive sim: 2.1%</span>
-<span class="k">title:</span> <span class="s">LSASS Memory Access via Signed Binary Proxy</span>
-<span class="k">id:</span> <span class="p">d4f0e2a1-8b31-4f7e-9c55-2c11d0aa8f4b</span>
-<span class="k">status:</span> <span class="s">experimental</span>
-<span class="k">description:</span> <span class="s">Detects process access to lsass.exe using signed MS binaries.</span>
-<span class="k">references:</span>
-    <span class="k">- https:</span><span class="c">//attack.mitre.org/techniques/T1003/001/</span>
-<span class="k">logsource:</span>
-    <span class="k">product:</span> <span class="s">windows</span>
-    <span class="k">service:</span> <span class="s">sysmon</span>
-<span class="k">detection:</span>
-    <span class="k">selection:</span>
-        <span class="k">EventID:</span> <span class="p">10</span>
-        <span class="k">TargetImage:</span> <span class="d">'*lsass.exe*'</span>
-        <span class="k">GrantedAccess:</span>
-            <span class="k">- <span class="s">0x1010</span></span>
-            <span class="k">- <span class="s">0x143a</span></span>
-    <span class="k">filter_parent:</span>
-        <span class="k">ParentImage:</span> <span class="s">'C:\Windows\System32\wbem\wmiprvse.exe'</span>
-    <span class="k">condition:</span> <span class="s">selection and not filter_parent</span>
-<span class="k">falsepositives:</span>
-    <span class="k">- <span class="s">Legitimate memory readers (AV agents) - enumerate in baseline.</span></span>
-<span class="k">tags:</span>
-    <span class="k">- <span class="s">attack.credential_access</span></span>
-    <span class="k">- <span class="s">attack.t1003.001</span></span>
-    <span class="k">- <span class="s">sysmon</span></span></pre>
-        <div class="yaml-actions">
-          <button class="yaml-copy" data-target="yaml1" title="Copy YAML">copy</button>
-          <button class="yaml-toggle" data-target="yaml1" data-mode="raw">raw</button>
-        </div>
-      </div>
-      <div class="proposal-foot">
-        <span class="meta">
-          <span>Confidence <b>0.94</b></span>
-          <span class="rule">lsa_memory_proxy_v3.yml</span>
-        </span>
-        <button class="btn btn-approve">Approve</button>
-        <button class="btn btn-reject">Reject</button>
-      </div>
-    </article>
-
-    <!-- PROPOSAL 2: pending -->
-    <article class="card proposal">
-      <div class="proposal-head">
-        <span class="proposal-id">PRP-0418</span>
-        <div class="proposal-title">
-          <h2>Impossible travel on VPN edge for service accounts</h2>
-          <div class="sub">Source: <code>auth-gateway</code> · covers <code>T1078</code> · proposed from 9 correlated events</div>
-        </div>
-        <span class="severity sev-med">MED</span>
-      </div>
-      <p class="rationale">
-        Service accounts authenticated from more than one ASN within 30 minutes on production
-        VPN concentrators. Proposed severity is <b>medium</b> because two of nine sequences
-        matched a known datacenter-scanner pattern: rule includes a timezone-consistency check.
-      </p>
-      <div class="yaml-view">
-        <pre id="yaml2"><span class="c"># PRP-0418 · prod-eligible · false-positive sim: 5.8%</span>
-<span class="k">title:</span> <span class="s">Impossible Travel on VPN Edge for Service Accounts</span>
-<span class="k">id:</span> <span class="p">c81d4a2b-73e0-4d9c-96f0-6f7a13b5a2de</span>
-<span class="k">status:</span> <span class="s">experimental</span>
-<span class="k">logsource:</span>
-    <span class="k">product:</span> <span class="s">network</span>
-    <span class="k">service:</span> <span class="s">vpn_gateway</span>
-<span class="k">detection:</span>
-    <span class="k">selection_account:</span>
-        <span class="k">AccountType:</span> <span class="s">'SERVICE'</span>
-    <span class="k">selection_geo:</span>
-        <span class="k">DistinctASN:</span> <span class="s">'&gt;= 2'</span>
-        <span class="k">WindowMinutes:</span> <span class="p">30</span>
-    <span class="k">filter_tz:</span>
-        <span class="k">AuthTzDrift:</span> <span class="s">'&lt; 45min'</span>
-    <span class="k">condition:</span> <span class="s">selection_account and selection_geo and not filter_tz</span>
-<span class="k">tags:</span>
-    <span class="k">- <span class="s">attack.defense_evasion</span></span>
-    <span class="k">- <span class="s">attack.t1078</span></span>
-    <span class="k">- <span class="s">identity</span></span></pre>
-        <div class="yaml-actions">
-          <button class="yaml-copy" data-target="yaml2" title="Copy YAML">copy</button>
-          <button class="yaml-toggle" data-target="yaml2" data-mode="raw">raw</button>
-        </div>
-      </div>
-      <div class="proposal-foot">
-        <span class="meta">
-          <span>Confidence <b>0.71</b></span>
-          <span class="rule">impossible_travel_svc_v1.yml</span>
-        </span>
-        <button class="btn btn-approve">Approve</button>
-        <button class="btn btn-reject">Reject</button>
-      </div>
-    </article>
-
-    <!-- PROPOSAL 3: rejected example -->
-    <article class="card proposal">
-      <div class="proposal-head">
-        <span class="proposal-id">PRP-0415</span>
-        <div class="proposal-title">
-          <h2>Wide glob on downloads directory writes</h2>
-          <div class="sub">Source: <code>edr-fs-events</code> · covers <code>T1105</code> · proposed from 122 correlated events</div>
-        </div>
-        <span class="severity sev-med">MED</span>
-      </div>
-      <p class="rationale">
-        Rejected during earlier session: selection matches every browser download including
-        benign IT push scripts. Returned to pipeline for rework with narrower selection.
-      </p>
-      <div class="yaml-view">
-        <pre id="yaml3"><span class="c"># PRP-0415 · REJECTED · needs selection narrowing</span>
-<span class="k">title:</span> <span class="s">File Write to Downloads by Unknown Process</span>
-<span class="k">id:</span> <span class="p">77a1e0c4-39f8-47aa-bd41-8dce9b0417f2</span>
-<span class="k">status:</span> <span class="s">experimental</span>
-<span class="k">detection:</span>
-    <span class="k">selection:</span>
-        <span class="k">TargetFilename:</span> <span class="d">'*\Downloads\*'</span>
-<span class="k">tags:</span>
-    <span class="k">- <span class="s">attack.t1105</span></span></pre>
-        <div class="yaml-actions">
-          <button class="yaml-copy" data-target="yaml3" title="Copy YAML">copy</button>
-          <button class="yaml-toggle" data-target="yaml3" data-mode="raw">raw</button>
-        </div>
-      </div>
-      <div class="proposal-foot">
-        <span class="meta">
-          <span>Confidence <b>0.38</b></span>
-          <span class="rule">downloads_glob_v1.yml</span>
-        </span>
-        <span class="decision decision-rejected">Rejected</span>
-        <span class="time">yesterday 16:42</span>
-      </div>
-    </article>
+    <div class="toolbar">
+      <div class="tabs" role="tablist" aria-label="Filter proposals" id="tabs"></div>
+      <label class="search">
+        <span class="sr-only">Search proposals</span>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.75" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="input" id="search" type="search" placeholder="Search title, technique, reasoning" autocomplete="off">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+    </div>
+    <div id="list" aria-live="polite">
+      <div class="skeleton sk-card"></div><div class="skeleton sk-card"></div>
+    </div>
   </main>
 
-  <!-- ============ SIDEBAR ============ -->
   <aside>
-    <!-- pipeline health -->
-    <div class="panel">
-      <h3>Pipeline Health</h3>
-      <div class="health-row">
-        <span class="dot dot-ok dot-pulse"></span>
-        <span class="name">Ingest</span>
-        <span class="val">1: username@Redzone</span>
-      </div>
-      <div class="health-row">
-        <span class="dot dot-ok"></span>
-        <span class="name">Enrichment</span>
-        <span class="val">24ms p50</span>
-      </div>
-      <div class="health-row">
-        <span class="dot dot-warn"></span>
-        <span class="name">Correlation</span>
-        <span class="val">1 streak</span>
-      </div>
-      <div class="health-row">
-        <span class="dot dot-ok"></span>
-        <span class="name">Proposal engine</span>
-        <span class="val">3 queued</span>
-      </div>
-      <div class="health-row">
-        <span class="dot dot-bad"></span>
-        <span class="name">Deploy worker</span>
-        <span class="val">2 failed</span>
-      </div>
-      <div class="health-row">
-        <span class="dot dot-pending"></span>
-        <span class="name">Sync (last)</span>
-        <span class="val">18min</span>
-      </div>
-    </div>
+    <section class="panel" aria-labelledby="hHealth">
+      <div class="panel-head"><h3 id="hHealth">Pipeline health</h3><span class="aside-meta" id="healthAge"></span></div>
+      <div id="health"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
+    </section>
 
-    <!-- coverage -->
-    <div class="panel">
-      <h3>Detection Coverage</h3>
-      <table class="cov-table">
-        <thead>
-          <tr><th>Domain</th><th>n</th><th>%</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Endpoint</td><td class="n">128</td><td>92</td><td><span class="cov-bar"><i style="width:92%"></i></span></td></tr>
-          <tr><td>Identity</td><td class="n">44</td><td>71</td><td><span class="cov-bar"><i style="width:71%"></i></span></td></tr>
-          <tr><td>Network</td><td class="n">31</td><td>58</td><td><span class="cov-bar low"><i style="width:58%"></i></span></td></tr>
-          <tr><td>Cloud</td><td class="n">19</td><td>34</td><td><span class="cov-bar low"><i style="width:34%"></i></span></td></tr>
-        </tbody>
-      </table>
-    </div>
+    <section class="panel" aria-labelledby="hCov">
+      <div class="panel-head"><h3 id="hCov">ATT&amp;CK coverage</h3><span id="covStale"></span></div>
+      <div id="coverage"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
+    </section>
 
-    <!-- activity -->
-    <div class="panel">
-      <h3>Activity</h3>
-      <div class="feed">
-        <div class="feed-item">
-          <span class="dot dot-ok"></span>
-          <span class="txt">
-            <b>you</b> approved <code>PRP-0409</code> — credential dumping write to SAM explosive redzone
-            <span class="when">T-4min · lsa_memory_proxy_v3.yml</span>
-          </span>
-        </div>
-        <div class="feed-item">
-          <span class="dot dot-warn"></span>
-          <span class="txt">
-            <b>pipeline</b> escalated crypto-occupancy sweep at <code>auth-gateway</code> during correlation pass
-            <span class="when">T-14min · rank 77 · escalated</span>
-          </span>
-        </div>
-        <div class="feed-item">
-          <span class="dot dot-bad"></span>
-          <span class="txt">
-            <b>deploy worker</b> returned error on push to <code>siem-prod</code> — retry scheduled
-            <span class="when">T-31min · 2 attempts</span>
-          </span>
-        </div>
+    <section class="panel" aria-labelledby="hTrig">
+      <div class="panel-head"><h3 id="hTrig">Agent runs</h3><span class="aside-meta" id="trigMeta"></span></div>
+      <div id="triggers"><div class="skeleton sk-row"></div></div>
+    </section>
+
+    <section class="panel" aria-labelledby="hAct">
+      <div class="panel-head">
+        <h3 id="hAct">Activity</h3>
+        <span class="aside-meta" style="display:flex;gap:2px">
+          <button class="btn-link" type="button" data-export="csv" title="Download the full audit trail as CSV">CSV</button>
+          <button class="btn-link" type="button" data-export="json" title="Download the full audit trail as JSON">JSON</button>
+        </span>
       </div>
-    </div>
+      <div id="activity"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
+      <div class="panel-foot"><button class="btn-link" type="button" id="moreActivity" hidden>Show more</button></div>
+    </section>
   </aside>
 </div>
 
-<script>
-// YAML raw/wrap toggle + copy-to-clipboard (delegated, works for live-rendered cards too)
-document.querySelectorAll('.yaml-toggle').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const pre = document.getElementById(btn.dataset.target);
-    if (btn.dataset.mode === 'raw') {
-      pre.style.whiteSpace = 'pre';
-      pre.style.overflowX = 'auto';
-      btn.textContent = 'wrap';
-      btn.dataset.mode = 'wrap';
-    } else {
-      pre.style.whiteSpace = '';
-      btn.textContent = 'raw';
-      btn.dataset.mode = 'raw';
-    }
-  });
-});
-document.addEventListener('click', e => {
-  const btn = e.target.closest('.yaml-copy');
-  if (!btn) return;
-  const pre = document.getElementById(btn.dataset.target);
-  if (!pre) return;
-  navigator.clipboard.writeText(pre.textContent).then(() => {
-    btn.textContent = 'copied';
-    setTimeout(() => { btn.textContent = 'copy'; }, 1500);
-  }).catch(() => { btn.textContent = 'failed'; setTimeout(() => { btn.textContent = 'copy'; }, 1500); });
-});
-// ensure live-rendered yaml views also get a copy button
-new MutationObserver(muts => {
-  document.querySelectorAll('.yaml-view').forEach(v => {
-    if (v.querySelector('.yaml-copy') || !v.querySelector('pre[id]')) return;
-    const pre = v.querySelector('pre[id]');
-    const wrap = document.createElement('div');
-    wrap.className = 'yaml-actions';
-    wrap.innerHTML = '<button class="yaml-copy" data-target="' + pre.id + '" title="Copy YAML">copy</button>';
-    v.appendChild(wrap);
-  });
-}).observe(document.documentElement, { childList: true, subtree: true });
-</script>
+<div class="toasts" id="toasts" aria-live="assertive"></div>
+
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gateForm">
+    <div class="brand"><div class="brand-mark"><span></span></div><span class="brand-name">Detection Platform</span></div>
+    <p>Enter the operator token to open the review queue. It is kept in this browser only.</p>
+    <label class="sr-only" for="gateToken">Operator token</label>
+    <input class="input mono" id="gateToken" type="password" placeholder="Operator token" autocomplete="current-password" required>
+    <button class="btn btn-primary" type="submit" id="gateBtn">Unlock</button>
+    <div class="error-line" id="gateErr" role="alert"></div>
+  </form>
+</div>
 
 <script>
-/* ---- LIVE DATA WIRING (appended; design/CSS untouched) ---- */
-const API = {
-  headers: () => ({ 'Authorization': 'Bearer ' + localStorage.getItem('consoleToken'), 'Content-Type': 'application/json' }),
-  async get(p) { const r = await fetch(p, {headers: this.headers()}); if (r.status === 401) { gate(); throw new Error('auth'); } if (!r.ok) throw new Error(p + ' -> ' + r.status); return r.json(); },
-  async post(p, body) { const r = await fetch(p, {method: 'POST', headers: this.headers(), body: body ? JSON.stringify(body) : null}); if (r.status === 401) { gate(); throw new Error('auth'); } if (!r.ok && r.status !== 202) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.status); } return r.json().catch(() => ({})); }
+'use strict';
+/* ================= state ================= */
+const POLL_MS = 15000, FAST_POLL_MS = 2500;
+const TABS = [
+  ['action', 'Needs action', ['pending', 'merge_failed', 'merging']],
+  ['all', 'All', null],
+  ['pending', 'Pending', ['pending']],
+  ['merge_failed', 'Failed', ['merge_failed']],
+  ['merged', 'Merged', ['merged']],
+  ['validated', 'Validated', ['validated']],
+  ['rejected', 'Rejected', ['rejected']],
+];
+const ui = {
+  tab: 'action', q: '', counts: {}, proposals: [],
+  drawer: {},            // pid -> 'reject' | 'validate' | null
+  notesOpen: new Set(),
+  yamlOpen: new Set(),
+  armed: {},             // pid -> timeout id (two-step approve)
+  busy: new Set(),
+  drafts: {},            // input key -> value, survives re-renders
+  sigs: {},              // pid -> render signature
+  activityLimit: 10,
+  timer: null, booted: false,
+};
+try { ui.tab = localStorage.getItem('consoleTab') || 'action'; } catch (_) {}
+if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'action';
+
+const $ = id => document.getElementById(id);
+function token() { try { return localStorage.getItem('consoleToken') || ''; } catch (_) { return ''; } }
+
+/* ================= api ================= */
+class AuthError extends Error {}
+async function api(method, path, body) {
+  const r = await fetch(path, {
+    method,
+    headers: { 'Authorization': 'Bearer ' + token(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 401) { showGate('Session token was rejected. Enter it again.'); throw new AuthError('unauthorized'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'HTTP ' + r.status);
+  return data;
+}
+
+/* ================= helpers ================= */
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+function safeUrl(u) { return /^https?:\/\//i.test(String(u || '')) ? String(u) : ''; }
+function ago(ts) {
+  const t = Date.parse(ts); if (!ts || isNaN(t)) return '';
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 45) return 'just now';
+  if (s < 3600) return Math.round(s / 60) + 'm ago';
+  if (s < 86400) return Math.round(s / 3600) + 'h ago';
+  if (s < 86400 * 30) return Math.round(s / 86400) + 'd ago';
+  return new Date(t).toISOString().slice(0, 10);
+}
+function fmtTs(ts) { return ts ? String(ts).replace('T', ' ').replace('Z', ' UTC') : ''; }
+function toast(msg, ok = true) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (ok ? '' : ' bad');
+  t.textContent = msg;
+  $('toasts').appendChild(t);
+  setTimeout(() => t.remove(), ok ? 3500 : 6000);
+}
+function yamlHighlight(y) {
+  return esc(y).split('\n').map(line => {
+    if (/^\s*#/.test(line)) return '<span class="c">' + line + '</span>';
+    const m = line.match(/^(\s*(?:-\s+)?)([\w.|-]+):(.*)$/);
+    if (m) return m[1] + '<span class="k">' + m[2] + ':</span>' + (m[3] ? '<span class="s">' + m[3] + '</span>' : '');
+    const li = line.match(/^(\s*-\s+)(.+)$/);
+    if (li) return li[1] + '<span class="s">' + li[2] + '</span>';
+    return line;
+  }).join('\n');
+}
+function nowLocalInput() {
+  const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+}
+
+/* ================= proposals ================= */
+const STATUS = {
+  pending: ['Pending', 'b-pending'],
+  approved: ['Approved', 'b-merging'],
+  merging: ['Merging', 'b-merging'],
+  merged: ['Merged', 'b-merged'],
+  merge_failed: ['Merge failed', 'b-failed'],
+  validated: ['Validated', 'b-validated'],
+  rejected: ['Rejected', 'b-rejected'],
 };
 
-function gate() {
-  if (document.getElementById('gateOverlay')) return;
-  const o = document.createElement('div');
-  o.id = 'gateOverlay';
-  o.style.cssText = 'position:fixed;inset:0;background:#08090af2;z-index:999;display:flex;align-items:center;justify-content:center;';
-  o.innerHTML = '<div style="text-align:center"><div class="brand-name" style="font-size:20px;margin-bottom:16px">Detection Platform</div>' +
-    '<input id="gateToken" type="password" placeholder="operator token" style="background:#191a1b;border:1px solid rgba(255,255,255,0.1);color:#f7f8f8;padding:10px 14px;border-radius:8px;width:280px;font-family:ui-monospace,monospace;font-size:13px" />' +
-    '<br/><button id="gateBtn" class="btn btn-primary" style="margin-top:12px;padding:10px 24px">Unlock</button>' +
-    '<div id="gateErr" style="color:#f85149;font-size:12px;margin-top:8px"></div></div>';
-  document.body.appendChild(o);
-  const tryToken = async () => {
-    const t = document.getElementById('gateToken').value.trim();
-    try {
-      const r = await fetch('/api/proposals', {headers: {'Authorization': 'Bearer ' + t}});
-      if (r.status === 401) { document.getElementById('gateErr').textContent = 'invalid token'; return; }
-      localStorage.setItem('consoleToken', t);
-      o.remove(); location.reload();
-    } catch (e) { document.getElementById('gateErr').textContent = 'error: ' + e.message; }
-  };
-  document.getElementById('gateBtn').addEventListener('click', tryToken);
-  document.getElementById('gateToken').addEventListener('keydown', e => { if (e.key === 'Enter') tryToken(); });
+function steps(p) {
+  const st = p.status;
+  const merged = ['merged', 'validated'].includes(st);
+  const s1 = '<span class="step done"><span class="dot"></span>Proposed</span>';
+  let s2, s3;
+  if (st === 'rejected') s2 = '<span class="step fail"><span class="dot"></span>Rejected</span>';
+  else if (st === 'merge_failed') s2 = '<span class="step fail"><span class="dot"></span>Merge failed</span>';
+  else if (st === 'merging' || st === 'approved') s2 = '<span class="step now"><span class="dot"></span>Merging</span>';
+  else s2 = '<span class="step ' + (merged ? 'done' : '') + '"><span class="dot"></span>Merged</span>';
+  if (st !== 'rejected') s3 = '<span class="step ' + (st === 'validated' ? 'done' : merged ? 'now' : '') + '"><span class="dot"></span>Validated</span>';
+  return '<span class="steps" aria-label="Lifecycle">' + [s1, s2, s3].filter(Boolean).join('<span class="step-line"></span>') + '</span>';
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
-function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+function draft(key, fallback = '') { return key in ui.drafts ? ui.drafts[key] : fallback; }
 
-function toast(msg, ok) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#191a1b;border:1px solid rgba(255,255,255,0.12);color:' + (ok ? '#3fb950' : '#f85149') + ';padding:12px 18px;border-radius:8px;font-size:13px;z-index:998;font-family:ui-monospace,monospace';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+function actionsHtml(p) {
+  const id = esc(p.id), busy = ui.busy.has(p.id) ? ' disabled' : '';
+  const notesN = Array.isArray(p.notes) ? p.notes.length : 0;
+  const notesBtn = `<button class="btn btn-ghost btn-sm" type="button" data-act="notes" data-id="${id}" aria-expanded="${ui.notesOpen.has(p.id)}">Notes${notesN ? ' · ' + notesN : ''}</button>`;
+  let main = '';
+  switch (p.status) {
+    case 'pending': {
+      const armed = p.id in ui.armed;
+      main = `<button class="btn btn-approve${armed ? ' armed' : ''}" type="button" data-act="approve" data-id="${id}"${busy}>${armed ? 'Confirm merge' : 'Approve'}</button>
+              <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>Reject</button>`;
+      break;
+    }
+    case 'merge_failed':
+      main = `<button class="btn btn-approve" type="button" data-act="retry" data-id="${id}"${busy}>Retry merge</button>
+              <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>Reject</button>`;
+      break;
+    case 'merging': case 'approved':
+      main = '<span class="working"><span class="dot accent pulse"></span>Checking PR and CI, then merging…</span>';
+      break;
+    case 'merged':
+      main = `<button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>Record validation</button>`;
+      break;
+  }
+  return notesBtn + main;
 }
 
-function yamlHighlight(y) {
-  return esc(y)
-    .replace(/^(\s*)([a-zA-Z_]+):/gm, '$1<span class="k">$2:</span>')
-    .replace(/^(\s*-\s*)(.+)$/gm, (m0, sp, v) => sp + '<span class="s">' + v + '</span>');
-}
-
-function renderProposals(props) {
-  const main = document.querySelector('main');
-  if (!main) return;
-  const pending = props.filter(p => p.status === 'pending' || p.status === 'merging' || p.status === 'merge_failed');
-  const done = props.filter(p => !['pending','merging','merge_failed'].includes(p.status));
-  const ordered = [...pending, ...done];
-  main.innerHTML = ordered.map(p => {
-    const badge = p.status === 'pending' ? '<span class="severity sev-med">PENDING</span>'
-      : p.status === 'merging' ? '<span class="severity sev-med">MERGING…</span>'
-      : p.status === 'merge_failed' ? '<span class="severity sev-high">MERGE FAILED</span>'
-      : p.status === 'approved' ? '<span class="severity sev-low">MERGED</span>'
-      : '<span class="severity sev-med">REJECTED</span>';
-    const prLink = p.pr_url ? `<a class="sub" href="${escAttr(p.pr_url)}" target="_blank" style="color:#58a6ff">PR #${esc(p.pr_number)}</a>` : '';
-    const actions = p.status === 'pending'
-      ? `<div class="proposal-foot">
-           <button class="btn btn-approve" onclick="doApprove('${escAttr(p.id)}')">Approve</button>
-           <button class="btn btn-reject" onclick="showReject('${escAttr(p.id)}')">Reject</button>
-           <div id="reject-${escAttr(p.id)}" style="display:none;flex:1;display:flex;gap:8px;margin-left:8px">
-             <input id="reason-${escAttr(p.id)}" placeholder="rejection reason" style="flex:1;background:#191a1b;border:1px solid rgba(255,255,255,0.1);color:#f7f8f8;padding:6px 10px;border-radius:6px;font-size:12px" />
-             <button class="btn btn-reject" onclick="doReject('${escAttr(p.id)}')">Confirm</button>
-           </div>
-         </div>`
-      : '';
-    return `<article class="card proposal">
-      <div class="proposal-head">
-        <span class="proposal-id">${esc(p.technique)}</span>
-        <div class="proposal-title"><h2>${esc(p.title)}</h2>
-          <div class="sub">${prLink ? 'Source: ' + prLink + ' · ' : ''}AI-proposed · pending operator review</div></div>
-        ${badge}
+function drawerHtml(p) {
+  const id = esc(p.id), d = ui.drawer[p.id];
+  const busy = ui.busy.has(p.id) ? ' disabled' : '';
+  let html = '';
+  if (d === 'reject' && ['pending', 'merge_failed'].includes(p.status)) {
+    html += `<div class="drawer"><div class="drawer-title">Reject proposal</div>
+      <div class="form-row">
+        <div class="field" style="flex:1;min-width:200px"><label for="rr-${id}">Reason <small>(shown in the activity log)</small></label>
+          <input class="input" id="rr-${id}" data-draft="reason:${id}" maxlength="1000" placeholder="e.g. too noisy on admin hosts" value="${esc(draft('reason:' + p.id))}"></div>
+        <button class="btn btn-ghost" type="button" data-act="drawer-close" data-id="${id}">Cancel</button>
+        <button class="btn btn-danger" type="button" data-act="reject" data-id="${id}"${busy}>Reject</button>
+      </div></div>`;
+  }
+  if (d === 'validate' && p.status === 'merged') {
+    html += `<div class="drawer"><div class="drawer-title">Record validation evidence</div>
+      <div class="form-grid">
+        <div class="field"><label for="vr-${id}">Wazuh rule ID</label>
+          <input class="input mono" id="vr-${id}" data-draft="rule:${id}" maxlength="64" placeholder="100013" value="${esc(draft('rule:' + p.id))}"></div>
+        <div class="field"><label for="vf-${id}">Alert fired at <small>(your local time)</small></label>
+          <input class="input mono" id="vf-${id}" type="datetime-local" data-draft="fired:${id}" value="${esc(draft('fired:' + p.id, nowLocalInput()))}"></div>
+        <div class="field"><label for="va-${id}">Attack</label>
+          <input class="input" id="va-${id}" data-draft="attack:${id}" maxlength="300" placeholder="Atomic Red Team ${esc(p.technique)} #1" value="${esc(draft('attack:' + p.id))}"></div>
+        <div class="field"><label for="ve-${id}">Evidence URL <small>(optional)</small></label>
+          <input class="input" id="ve-${id}" type="url" data-draft="evidence:${id}" maxlength="500" placeholder="https://…" value="${esc(draft('evidence:' + p.id))}"></div>
       </div>
-      <p class="rationale">${esc(p.reasoning)}</p>
-      <div class="yaml-view"><pre id="yaml-${escAttr(p.id)}">${yamlHighlight(p.sigma_yaml || '')}</pre></div>
-      ${actions}
-    </article>`;
-  }).join('') || '<article class="card proposal"><p class="rationale">No proposals yet. Use "Request Proposal" to trigger the AI Detection Engineer.</p></article>';
-  document.getElementById('queueCount').textContent = pending.length;
+      <div class="form-actions"><span class="form-hint">Marks the rule as proven against a real attack.</span>
+        <button class="btn btn-ghost" type="button" data-act="drawer-close" data-id="${id}">Cancel</button>
+        <button class="btn btn-approve" type="button" data-act="validate" data-id="${id}"${busy}>Mark validated</button></div>
+    </div>`;
+  }
+  if (ui.notesOpen.has(p.id)) {
+    const notes = Array.isArray(p.notes) ? p.notes : [];
+    html += `<div class="drawer"><div class="drawer-title">Notes</div>
+      ${notes.length ? '<div class="notes">' + notes.map(n => `<div class="note"><span class="note-avatar" aria-hidden="true">${esc(String(n.author || '?').slice(0, 2))}</span>
+        <div class="note-body"><div class="note-meta"><b>${esc(n.author)}</b> · <span title="${esc(fmtTs(n.ts))}">${esc(ago(n.ts))}</span></div><div class="note-text">${esc(n.text)}</div></div></div>`).join('') + '</div>'
+        : '<p class="note-meta" style="margin-bottom:10px">No notes yet. Notes are append-only and visible to every operator.</p>'}
+      <div class="form-row">
+        <div class="field" style="flex:1;min-width:200px"><label class="sr-only" for="nt-${id}">New note</label>
+          <textarea class="input" id="nt-${id}" data-draft="note:${id}" maxlength="2000" rows="2" placeholder="Blocked on ART run, FP risk on admin hosts, …">${esc(draft('note:' + p.id))}</textarea></div>
+        <button class="btn btn-ghost" type="button" data-act="note" data-id="${id}"${busy}>Add note</button>
+      </div></div>`;
+  }
+  return html;
 }
 
-async function doApprove(id) {
-  try {
-    await API.post('/api/proposals/' + id + '/approve');
-    toast('Merge started for ' + id, true);
-    refresh();
-  } catch (e) { toast('Approve failed: ' + e.message, false); }
+function cardHtml(p) {
+  const id = esc(p.id);
+  const [label, cls] = STATUS[p.status] || [p.status, 'b-pending'];
+  const pr = safeUrl(p.pr_url);
+  const prLink = pr ? `<a href="${esc(pr)}" target="_blank" rel="noopener noreferrer">PR #${esc(p.pr_number)}</a>` : `PR #${esc(p.pr_number)}`;
+  let callout = '';
+  if (p.status === 'merge_failed' && p.merge_error) {
+    const why = String(p.merge_error).replace(/^merge blocked:\s*/i, '');
+    callout = `<div class="callout bad"><b>Merge blocked.</b> ${esc(why)}</div>`;
+  }
+  if (p.status === 'rejected') callout = `<div class="callout"><b>Rejected.</b> ${esc(p.reject_reason || 'No reason given.')}</div>`;
+  if (p.status === 'validated' && p.validation) {
+    const v = p.validation, ev = safeUrl(v.evidence_url);
+    callout = `<div class="callout ok"><b>Validated against a real attack.</b>
+      <dl class="evidence"><dt>Rule</dt><dd>${esc(v.rule_id)}</dd><dt>Attack</dt><dd>${esc(v.attack)}</dd>
+      <dt>Fired</dt><dd>${esc(fmtTs(v.fired_at))}</dd>
+      ${ev ? `<dt>Evidence</dt><dd><a href="${esc(ev)}" target="_blank" rel="noopener noreferrer">${esc(ev)}</a></dd>` : ''}
+      <dt>Recorded</dt><dd>${esc(v.recorded_by || 'operator')} · ${esc(ago(v.recorded_at))}</dd></dl></div>`;
+  }
+  const yamlOpen = ui.yamlOpen.has(p.id);
+  return `<article class="card" id="card-${id}" data-id="${id}">
+    <div class="proposal-head">
+      <span class="proposal-id">${esc(p.technique)}</span>
+      <div class="proposal-title"><h2>${esc(p.title)}</h2>
+        <div class="sub">${prLink}<code>${esc(p.branch)}</code><span title="${esc(fmtTs(p.created_at))}">proposed ${esc(ago(p.created_at))}</span></div></div>
+      <span class="badge ${cls}">${p.status === 'merging' ? '<span class="dot accent pulse"></span>' : ''}${esc(label)}</span>
+    </div>
+    <p class="rationale">${esc(p.reasoning)}</p>
+    <div class="yaml-view${yamlOpen ? ' expanded' : ''}"><pre id="yaml-${id}">${yamlHighlight(p.sigma_yaml || '')}</pre>
+      <div class="yaml-actions"><button class="yaml-btn" type="button" data-act="copy" data-id="${id}">copy</button>
+      <button class="yaml-btn" type="button" data-act="yaml" data-id="${id}" aria-expanded="${yamlOpen}">${yamlOpen ? 'collapse' : 'expand'}</button></div></div>
+    ${callout}
+    <div class="proposal-foot"><span class="meta">${steps(p)}</span>${actionsHtml(p)}</div>
+    ${drawerHtml(p)}
+  </article>`;
 }
-function showReject(id) {
-  const el = document.getElementById('reject-' + id);
-  if (el) { el.style.display = el.style.display === 'none' ? 'flex' : 'none'; el.style.display = 'flex'; }
+
+function signature(p) {
+  return JSON.stringify([p, ui.drawer[p.id] || null, ui.notesOpen.has(p.id), ui.yamlOpen.has(p.id),
+    p.id in ui.armed, ui.busy.has(p.id), Math.floor(Date.now() / 60000)]);
 }
-async function doReject(id) {
-  const reason = (document.getElementById('reason-' + id) || {}).value || '';
-  try {
-    await API.post('/api/proposals/' + id + '/reject', {reason});
-    toast('Rejected ' + id, true);
-    refresh();
-  } catch (e) { toast('Reject failed: ' + e.message, false); }
+
+function renderTabs() {
+  const c = ui.counts;
+  $('tabs').innerHTML = TABS.map(([key, label, sts]) => {
+    const n = sts ? sts.reduce((a, s) => a + (c[s] || 0), 0) : Object.values(c).reduce((a, b) => a + b, 0);
+    return `<button class="tab" type="button" role="tab" data-tab="${key}" aria-selected="${ui.tab === key}">${label}<span class="n">${n}</span></button>`;
+  }).join('');
+  const pending = c.pending || 0;
+  $('queueCount').textContent = pending + ' pending';
+  const parts = [['merged', 'merged'], ['validated', 'validated'], ['rejected', 'rejected'], ['merge_failed', 'failed']]
+    .filter(([k]) => c[k]).map(([k, l]) => `<b>${c[k]}</b> ${l}`);
+  $('disposition').innerHTML = parts.join(' · ');
 }
+
+function renderList(force) {
+  const list = $('list');
+  const props = ui.proposals;
+  if (!props.length) {
+    ui.sigs = {};
+    const empty = ui.q ? `<b>No proposals match “${esc(ui.q)}”.</b>Try a technique ID like T1059.`
+      : ui.tab === 'action' ? '<b>Nothing needs review.</b>Use “Request proposal” to ask the AI detection engineer for a new rule.'
+      : '<b>No proposals in this view.</b>';
+    list.innerHTML = `<div class="card empty-state">${empty}</div>`;
+    return;
+  }
+  if (list.querySelector('.empty-state, .skeleton')) list.innerHTML = '';
+  const active = document.activeElement;
+  const keep = new Set();
+  let prev = null;
+  for (const p of props) {
+    keep.add(p.id);
+    let node = document.getElementById('card-' + p.id);
+    const sig = signature(p);
+    // Never rebuild a card the operator is typing in: their draft is safe in
+    // ui.drafts, but a rebuild would steal focus and the caret.
+    const typing = node && active && node.contains(active) && /INPUT|TEXTAREA/.test(active.tagName);
+    if (!node || (ui.sigs[p.id] !== sig && !typing) || force === p.id) {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = cardHtml(p).trim();
+      const fresh = tpl.content.firstElementChild;
+      if (node) node.replaceWith(fresh); else list.appendChild(fresh);
+      node = fresh;
+      ui.sigs[p.id] = sig;
+    }
+    // keep order in sync with the API
+    if (prev ? prev.nextElementSibling !== node : list.firstElementChild !== node) {
+      if (prev) prev.after(node); else list.prepend(node);
+    }
+    prev = node;
+  }
+  for (const node of [...list.children]) {
+    if (!keep.has(node.dataset.id)) { delete ui.sigs[node.dataset.id]; node.remove(); }
+  }
+}
+
+async function loadProposals() {
+  const tab = TABS.find(t => t[0] === ui.tab);
+  const params = new URLSearchParams();
+  if (tab[2]) params.set('status', tab[2].join(','));
+  if (ui.q) params.set('q', ui.q);
+  const data = await api('GET', '/api/proposals' + (params.toString() ? '?' + params : ''));
+  ui.proposals = Array.isArray(data) ? data : (data.proposals || []);
+  ui.counts = data.counts || ui.counts;
+  renderTabs();
+  renderList();
+  // While anything is merging, poll faster so the outcome shows up promptly.
+  schedule(Object.values(ui.counts).length && (ui.counts.merging || 0) > 0 ? FAST_POLL_MS : POLL_MS);
+}
+
+/* ================= actions ================= */
+function findP(id) { return ui.proposals.find(p => p.id === id); }
+async function run(id, fn, okMsg) {
+  ui.busy.add(id); rerender(id);
+  try { const r = await fn(); if (okMsg) toast(typeof okMsg === 'function' ? okMsg(r) : okMsg); return r; }
+  catch (e) { if (!(e instanceof AuthError)) toast(e.message, false); return null; }
+  finally { ui.busy.delete(id); await refreshProposals(); }
+}
+function rerender(id) { renderList(id); }
+function clearDrafts(prefixes, id) { prefixes.forEach(k => delete ui.drafts[k + ':' + id]); }
+async function refreshProposals() {
+  try { await loadProposals(); }
+  catch (e) {
+    if (e instanceof AuthError) return;   // the gate takes over; polling resumes after unlock
+    if ($('list').querySelector('.skeleton')) $('list').innerHTML = `<div class="card empty-state"><b>Could not load proposals.</b>${esc(e.message)}</div>`;
+    console.warn(e);
+    schedule(POLL_MS);                     // keep polling through transient failures
+  }
+}
+
+const actions = {
+  async approve(id) {
+    if (!(id in ui.armed)) {
+      ui.armed[id] = setTimeout(() => { delete ui.armed[id]; rerender(id); }, 4000);
+      return rerender(id);
+    }
+    clearTimeout(ui.armed[id]); delete ui.armed[id];
+    const p = findP(id);
+    await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/approve`), `Merging PR #${p ? p.pr_number : ''}: CI gate running`);
+  },
+  async retry(id) {
+    await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/retry`), 'Retrying merge');
+  },
+  async reject(id) {
+    const reason = (ui.drafts['reason:' + id] || '').trim();
+    const r = await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/reject`, { reason }), 'Proposal rejected');
+    if (r) { ui.drawer[id] = null; clearDrafts(['reason'], id); rerender(id); }
+  },
+  async validate(id) {
+    const rule = (ui.drafts['rule:' + id] || '').trim();
+    const attack = (ui.drafts['attack:' + id] || '').trim();
+    const firedLocal = ui.drafts['fired:' + id] || nowLocalInput();
+    const evidence = (ui.drafts['evidence:' + id] || '').trim();
+    if (!rule || !attack) { toast('Rule ID and attack are required', false); return; }
+    const fired = new Date(firedLocal);
+    if (isNaN(fired)) { toast('Alert time is not a valid date', false); return; }
+    const body = { rule_id: rule, attack, fired_at: fired.toISOString() };
+    if (evidence) body.evidence_url = evidence;
+    const r = await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/validated`, body), 'Validation recorded');
+    if (r) { ui.drawer[id] = null; clearDrafts(['rule', 'attack', 'fired', 'evidence'], id); rerender(id); }
+  },
+  async note(id) {
+    const text = (ui.drafts['note:' + id] || '').trim();
+    if (!text) { toast('Write a note first', false); return; }
+    const r = await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/notes`, { text }), 'Note added');
+    if (r) { clearDrafts(['note'], id); rerender(id); }
+  },
+  drawer(id, el) {
+    const want = el.dataset.drawer;
+    ui.drawer[id] = ui.drawer[id] === want ? null : want;
+    rerender(id);
+    if (ui.drawer[id]) setTimeout(() => { const f = document.querySelector(`#card-${CSS.escape(id)} .drawer .input`); if (f) f.focus(); }, 0);
+  },
+  'drawer-close'(id) { ui.drawer[id] = null; rerender(id); },
+  notes(id) {
+    ui.notesOpen.has(id) ? ui.notesOpen.delete(id) : ui.notesOpen.add(id);
+    rerender(id);
+    if (ui.notesOpen.has(id)) setTimeout(() => { const f = $('nt-' + id); if (f) f.focus(); }, 0);
+  },
+  yaml(id) { ui.yamlOpen.has(id) ? ui.yamlOpen.delete(id) : ui.yamlOpen.add(id); rerender(id); },
+  async copy(id, el) {
+    const p = findP(id);
+    try { await navigator.clipboard.writeText(p ? p.sigma_yaml : ''); el.textContent = 'copied'; }
+    catch (_) { el.textContent = 'failed'; }
+    setTimeout(() => { el.textContent = 'copy'; }, 1500);
+  },
+};
+
+$('list').addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const fn = actions[el.dataset.act];
+  if (fn) fn(el.dataset.id, el);
+});
+$('list').addEventListener('input', e => {
+  const key = e.target.dataset && e.target.dataset.draft;
+  if (key) ui.drafts[key] = e.target.value;
+});
+$('list').addEventListener('keydown', e => {
+  const key = e.target.dataset && e.target.dataset.draft;
+  if (!key) return;
+  const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+  if (e.key === 'Escape') {
+    if (kind === 'note') { ui.notesOpen.delete(id); } else { ui.drawer[id] = null; }
+    rerender(id);
+  } else if (e.key === 'Enter' && (kind === 'reason' || (kind === 'note' && (e.metaKey || e.ctrlKey)))) {
+    e.preventDefault(); actions[kind === 'reason' ? 'reject' : 'note'](id);
+  }
+});
+$('list').addEventListener('focusout', () => {
+  // A card skipped during a poll (because it had focus) catches up on blur.
+  setTimeout(() => { if (!$('list').contains(document.activeElement)) renderList(); }, 0);
+});
+$('tabs').addEventListener('click', e => {
+  const t = e.target.closest('[data-tab]'); if (!t) return;
+  ui.tab = t.dataset.tab;
+  try { localStorage.setItem('consoleTab', ui.tab); } catch (_) {}
+  renderTabs(); refreshProposals();
+});
+let searchTimer;
+$('search').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { ui.q = e.target.value.trim(); refreshProposals(); }, 250);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && $('gate').hidden) {
+    e.preventDefault(); $('search').focus();
+  }
+});
+
+/* ================= sidebar ================= */
+const LEVEL_FROM_STATUS = { success: 'ok', up: 'ok', online: 'ok', ok: 'ok', neutral: 'ok', skipped: 'ok',
+  in_progress: 'warn', queued: 'warn', pending: 'warn', degraded: 'warn', none: 'warn', warn: 'warn',
+  failure: 'bad', down: 'bad', offline: 'bad', timed_out: 'bad', cancelled: 'bad', bad: 'bad' };
+function levelOf(c) { return c.level || LEVEL_FROM_STATUS[c.status] || 'unknown'; }
 
 function renderHealth(h) {
-  const panel = document.querySelector('.panel');
-  const dotCls = s => s === 'ok' ? 'dot-ok' : s === 'warn' ? 'dot-warn' : s === 'bad' ? 'dot-bad' : 'dot-pending';
-  // Rebuild all health rows dynamically from API components — never patch
-  // static demo rows by index (labels drifted from the real components).
   const comps = (h && h.components) || [];
-  const host = document.querySelector('aside .panel .health-row')?.parentElement;
-  if (host && comps.length) {
-    host.innerHTML = comps.map(c =>
-      `<div class="health-row"><span class="dot ${dotCls(c.status)}${c.status === 'ok' ? ' dot-pulse' : ''}"></span>` +
-      `<span class="name">${esc(c.name)}</span><span class="val">${esc(c.detail || c.status)}</span></div>`
-    ).join('');
-  }
-  // status pill
-  const pill = document.querySelector('.pill-ok');
-  if (pill) {
-    const allOk = comps.length > 0 && comps.every(c => c.status === 'ok');
-    pill.innerHTML = `<span class="dot ${allOk ? 'dot-ok' : 'dot-warn'}"></span> ${allOk ? 'Pipeline healthy' : 'Degraded'}`;
-    pill.style.color = allOk ? '#3fb950' : '#d29922';
-  }
+  $('health').innerHTML = comps.length ? comps.map(c => {
+    const lv = levelOf(c);
+    return `<div class="health-row"><span class="dot ${lv === 'unknown' ? '' : lv}${lv === 'ok' ? ' pulse' : ''}"></span>
+      <div class="body"><div class="name">${esc(c.name)}<span class="st">${esc(c.status)}</span></div>
+      <div class="detail" title="${esc(c.detail)}">${esc(c.detail || '')}</div></div></div>`;
+  }).join('') : '<p class="note-meta">No components reported.</p>';
+  $('healthAge').textContent = h && h.checked_at ? 'checked ' + ago(h.checked_at) : '';
+  const levels = comps.map(levelOf);
+  const worst = levels.includes('bad') ? 'bad' : levels.some(l => l === 'warn' || l === 'unknown') ? 'warn' : 'ok';
+  const bad = comps.filter(c => levelOf(c) === 'bad').map(c => c.name);
+  const pill = $('healthPill');
+  pill.className = 'pill ' + (comps.length ? worst : '');
+  pill.title = bad.length ? 'Down: ' + bad.join(', ') : comps.filter(c => levelOf(c) !== 'ok').map(c => c.name + ': ' + c.detail).join('\n');
+  pill.innerHTML = `<span class="dot ${worst}"></span><span class="label">${worst === 'ok' ? 'Pipeline healthy' : worst === 'bad' ? bad.length + ' component' + (bad.length > 1 ? 's' : '') + ' down' : 'Pipeline degraded'}</span>`;
 }
 
-function renderCoverage(rows) {
-  const table = document.querySelector('.cov-table');
-  if (!table || !Array.isArray(rows)) return;
-  const get = (r, objKeys, arrIdx) => {
-    if (Array.isArray(r)) return r[arrIdx] != null ? String(r[arrIdx]) : '?';
-    for (const k of objKeys) { if (r[k] != null && r[k] !== '') return String(r[k]); }
+function covLevel(status) {
+  const s = String(status).toLowerCase();
+  if (s.includes('validated')) return 'ok';
+  if (s === '?' || s.includes('blocked') || s.includes('untested') || s.includes('out of scope')) return '';
+  return 'warn';
+}
+function renderCoverage(cov) {
+  const rows = Array.isArray(cov) ? cov : (cov && cov.rows) || [];
+  const cell = (r, keys, idx) => {
+    if (Array.isArray(r)) return r[idx] != null ? String(r[idx]) : '?';
+    for (const k of keys) if (r && r[k] != null && r[k] !== '') return String(r[k]);
     return '?';
   };
-  table.innerHTML = '<tr><th>Technique</th><th>Status</th></tr>' + rows.slice(0, 14).map(r => {
-    const tech = get(r, ['technique','Technique'], 1);
-    const statusFull = get(r, ['status','Status'], 7);
-    const st = statusFull.toLowerCase();
-    const cls = st.includes('validated') ? 'dot-ok' : st.includes('untested') || st.includes('blocked') || st === '?' ? 'dot-pending' : 'dot-warn';
-    return `<tr><td>${esc(tech)}</td><td><span class="dot ${cls}"></span> ${esc(statusFull.split(' ')[0])}</td></tr>`;
+  if (!rows.length) { $('coverage').innerHTML = '<p class="note-meta">No coverage rows.</p>'; return; }
+  const items = rows.map(r => {
+    const id = cell(r, ['id', 'ID'], 0), tech = cell(r, ['technique', 'Technique'], 1), status = cell(r, ['status', 'Status'], 7);
+    const m = tech.match(/^(T\d{4}(?:\.\d{3})?)\s*(.*)$/);
+    return { id, code: m ? m[1] : '', name: m ? m[2] : tech, status, lv: covLevel(status) };
+  });
+  const ok = items.filter(i => i.lv === 'ok').length, warn = items.filter(i => i.lv === 'warn').length;
+  const pct = n => (100 * n / items.length).toFixed(1) + '%';
+  const src = safeUrl(cov && cov.source);
+  $('coverage').innerHTML = `<div class="cov-summary"><span class="big">${ok}</span><span class="of">of ${items.length} detections validated${warn ? ` · ${warn} in progress` : ''}</span></div>
+    <div class="cov-bar" role="img" aria-label="${ok} of ${items.length} validated"><i class="ok" style="width:${pct(ok)}"></i><i class="warn" style="width:${pct(warn)}"></i></div>
+    <ul class="cov-list">${items.map(i => `<li><span class="id">${esc(i.id)}</span>
+      <span class="tech" title="${esc(i.code + ' ' + i.name)}">${i.code ? `<code>${esc(i.code)}</code>` : ''}${esc(i.name)}</span>
+      <span class="st" title="${esc(i.status)}"><span class="dot ${i.lv}"></span>${esc(i.status.split(' ')[0])}</span></li>`).join('')}</ul>
+    <div class="panel-foot">${cov && cov.fetched_at ? 'Synced ' + esc(ago(cov.fetched_at)) : ''}${src ? ` · <a href="${esc(src.replace('raw.githubusercontent.com', 'github.com').replace(/\/main\//, '/blob/main/'))}" target="_blank" rel="noopener noreferrer">source</a>` : ''}</div>`;
+  $('covStale').innerHTML = cov && cov.stale
+    ? `<span class="tag warn" title="${esc((cov.sample ? 'Showing sample data. ' : 'Showing the last good copy. ') + 'Source error: ' + (cov.error || 'unknown'))}">${cov.sample ? 'sample' : 'stale'}</span>` : '';
+}
+
+function renderTriggers(data) {
+  const ts = (data && data.triggers) || [];
+  $('trigMeta').textContent = data && data.total ? data.total + ' total' : '';
+  if (!ts.length) { $('triggers').innerHTML = '<p class="note-meta">No runs yet. “Request proposal” starts one.</p>'; return; }
+  $('triggers').innerHTML = ts.slice(0, 5).map(t => {
+    const waitingLong = t.status === 'sent' && Date.now() - Date.parse(t.ts) > 30 * 60000;
+    const lv = t.status === 'succeeded' ? 'ok' : t.status === 'failed' ? 'bad' : waitingLong ? 'warn' : 'accent pulse';
+    const label = t.status === 'sent' ? (waitingLong ? 'no result reported' : 'running') : t.status;
+    const link = t.proposal_id ? ` → <a href="#card-${esc(t.proposal_id)}" data-goto="${esc(t.proposal_id)}">proposal</a>` : '';
+    return `<div class="feed-item"><span class="dot ${lv}"></span><span class="txt"><b>${esc(label)}</b>${link} · <code>${esc(t.id)}</code>
+      <span class="when" title="${esc(t.detail)}">${esc(ago(t.ts))} · ${esc(t.detail || '')}</span></span></div>`;
   }).join('');
 }
 
-function renderActivity(items) {
-  const feed = document.querySelector('.feed');
-  if (!feed || !Array.isArray(items)) return;
-  feed.innerHTML = items.slice(0, 8).map(a =>
-    `<div class="feed-item"><span class="dot dot-pending"></span><span class="txt"><b>${esc(a.actor)}</b> ${esc(a.action)} — ${esc(a.detail || '')}<span class="when">${esc((a.ts || '').replace('T',' ').slice(0,19))}</span></span></div>`
-  ).join('');
+function actLevel(a) {
+  const x = String(a.action || '');
+  if (/validated|merged$|succeeded/.test(x)) return 'ok';
+  if (/failed|rejected/.test(x)) return 'bad';
+  if (/approved|retried|merging|triggered/.test(x)) return 'accent';
+  return '';
+}
+function renderActivity(data) {
+  const items = Array.isArray(data) ? data : (data && data.activity) || [];
+  $('activity').innerHTML = items.length ? items.map(a => {
+    const verb = String(a.action || '').replace(/^proposal\./, '').replace(/^propose\./, '').replace(/\./g, ' ');
+    return `<div class="feed-item${a.proposal_id ? ' linkable' : ''}"${a.proposal_id ? ` data-goto="${esc(a.proposal_id)}" title="Show proposal"` : ''}>
+      <span class="dot ${actLevel(a)}"></span><span class="txt"><b>${esc(a.actor)}</b> ${esc(verb)} · ${esc(a.detail || '')}
+      <span class="when" title="${esc(fmtTs(a.ts))}">${esc(ago(a.ts))}</span></span></div>`;
+  }).join('') : '<p class="note-meta">No activity yet.</p>';
+  $('moreActivity').hidden = !(data && data.total > items.length);
 }
 
-async function refresh() {
+async function gotoProposal(pid) {
+  let node = document.getElementById('card-' + pid);
+  if (!node) {
+    ui.tab = 'all'; ui.q = ''; $('search').value = '';
+    await refreshProposals();
+    node = document.getElementById('card-' + pid);
+  }
+  if (!node) { toast('That proposal no longer exists', false); return; }
+  node.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  node.classList.add('flash'); setTimeout(() => node.classList.remove('flash'), 1600);
+}
+document.querySelector('aside').addEventListener('click', e => {
+  const g = e.target.closest('[data-goto]');
+  if (g) { e.preventDefault(); gotoProposal(g.dataset.goto); return; }
+  const x = e.target.closest('[data-export]');
+  if (x) exportActivity(x.dataset.export);
+});
+$('moreActivity').addEventListener('click', () => { ui.activityLimit += 20; loadActivity(); });
+
+async function exportActivity(fmt) {
   try {
-    const props = await API.get('/api/proposals');
-    renderProposals(Array.isArray(props) ? props : props.proposals || []);
-  } catch (e) { console.warn('proposals', e.message); }
-  try {
-    const h = await API.get('/api/health/pipeline');
-    renderHealth(h);
-  } catch (e) { console.warn('health', e.message); }
-  try {
-    const cov = await API.get('/api/coverage');
-    renderCoverage(cov.rows || cov);
-  } catch (e) { console.warn('coverage', e.message); }
-  try {
-    const act = await API.get('/api/activity');
-    renderActivity(Array.isArray(act) ? act : act.activity || act.items || []);
-  } catch (e) { console.warn('activity', e.message); }
+    const r = await fetch('/api/activity/export?format=' + fmt, { headers: { 'Authorization': 'Bearer ' + token() } });
+    if (r.status === 401) { showGate('Session token was rejected. Enter it again.'); return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    const name = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name ? name[1] : 'activity.' + fmt;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch (e) { toast('Export failed: ' + e.message, false); }
 }
 
-// boot
-(async () => {
-  if (!localStorage.getItem('consoleToken')) { gate(); return; }
-  try { await API.get('/api/proposals'); } catch (e) { gate(); return; }
-  refresh();
-  setInterval(refresh, 15000);
-  const reqBtn = document.getElementById('requestBtn') || document.getElementById('requestBtnTop');
-  if (reqBtn) reqBtn.addEventListener('click', async () => {
-    reqBtn.disabled = true; reqBtn.textContent = 'Requesting…';
-    try { await API.post('/api/trigger/propose'); toast('Proposal cycle triggered', true); }
-    catch (e) { toast('Trigger failed: ' + e.message, false); }
-    setTimeout(() => { reqBtn.disabled = false; reqBtn.textContent = 'Request Proposal'; }, 3000);
-  });
-})();
+/* ================= loading ================= */
+function panelError(id, e) {
+  if (e instanceof AuthError) return;
+  const el = $(id);
+  if (el.querySelector('.skeleton') || !el.children.length) el.innerHTML = `<p class="error-line">Could not load: ${esc(e.message)}</p>`;
+  console.warn(id, e);
+}
+async function loadHealth() { try { renderHealth(await api('GET', '/api/health/pipeline')); } catch (e) { panelError('health', e); } }
+async function loadCoverage() { try { renderCoverage(await api('GET', '/api/coverage')); } catch (e) { panelError('coverage', e); } }
+async function loadTriggers() { try { renderTriggers(await api('GET', '/api/triggers?limit=5')); } catch (e) { panelError('triggers', e); } }
+async function loadActivity() { try { renderActivity(await api('GET', '/api/activity?limit=' + ui.activityLimit)); } catch (e) { panelError('activity', e); } }
+async function loadVersion() {
+  try {
+    const v = await api('GET', '/api/version');
+    const sha = (v.build_info && v.build_info.git_sha) || '';
+    $('buildInfo').textContent = 'v' + v.version + (sha && sha !== 'unknown' ? ' · ' + sha.slice(0, 7) : '');
+    $('buildInfo').title = 'Console ' + v.version + (sha ? ' @ ' + sha : '') + (v.build_info ? ' · started ' + v.build_info.started_at : '');
+  } catch (_) {}
+}
+
+async function refreshAll() {
+  if (!token()) return;
+  await Promise.all([
+    refreshProposals().catch(() => {}),
+    loadHealth(), loadCoverage(), loadTriggers(), loadActivity(),
+  ]);
+}
+function schedule(ms) {
+  clearTimeout(ui.timer);
+  ui.timer = setTimeout(() => { if (document.hidden) schedule(POLL_MS); else refreshAll(); }, ms);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && ui.booted && token()) refreshAll(); });
+
+/* ================= header actions ================= */
+$('requestBtn').addEventListener('click', async () => {
+  const b = $('requestBtn');
+  b.disabled = true; b.textContent = 'Requesting…';
+  try {
+    const r = await api('POST', '/api/trigger/propose');
+    if (r.triggered) toast('Agent run started (' + r.trigger_id + ')');
+    else toast('Agent did not start: ' + r.detail, false);
+  } catch (e) { if (!(e instanceof AuthError)) toast('Request failed: ' + e.message, false); }
+  finally {
+    loadTriggers(); loadActivity();
+    setTimeout(() => { b.disabled = false; b.textContent = 'Request proposal'; }, 2000);
+  }
+});
+$('lockBtn').addEventListener('click', () => {
+  try { localStorage.removeItem('consoleToken'); } catch (_) {}
+  clearTimeout(ui.timer);
+  showGate('');
+});
+
+/* ================= token gate ================= */
+function showGate(msg) {
+  clearTimeout(ui.timer);
+  $('gate').hidden = false;
+  $('gateErr').textContent = msg || '';
+  $('gateToken').value = '';
+  setTimeout(() => $('gateToken').focus(), 0);
+}
+$('gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const t = $('gateToken').value.trim();
+  if (!t) return;
+  $('gateBtn').disabled = true; $('gateErr').textContent = '';
+  try {
+    const r = await fetch('/api/version', { headers: { 'Authorization': 'Bearer ' + t } });
+    if (r.status === 401) { $('gateErr').textContent = 'That token was not accepted.'; return; }
+    if (!r.ok) { $('gateErr').textContent = 'Console returned HTTP ' + r.status + '.'; return; }
+    try { localStorage.setItem('consoleToken', t); } catch (_) { $('gateErr').textContent = 'This browser blocked storage; the token cannot be kept.'; return; }
+    $('gate').hidden = true;
+    boot();
+  } catch (err) { $('gateErr').textContent = 'Could not reach the console: ' + err.message; }
+  finally { $('gateBtn').disabled = false; }
+});
+
+/* ================= boot ================= */
+function boot() {
+  ui.booted = true;
+  renderTabs();
+  loadVersion();
+  refreshAll();
+}
+if (!token()) showGate(''); else boot();
 </script>
-
 </body>
 </html>

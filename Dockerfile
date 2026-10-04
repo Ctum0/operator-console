@@ -11,6 +11,10 @@ LABEL org.opencontainers.image.description="Human control plane for AI-proposed 
 RUN useradd --create-home --shell /usr/sbin/nologin appuser
 
 COPY --from=builder /install /usr/local
+# Commit SHA reported by /api/version. Pass with --build-arg GIT_SHA=... (compose
+# does this); on Coolify the runtime SOURCE_COMMIT variable is used instead.
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA}
 WORKDIR /app
 COPY app/ ./app/
 RUN mkdir -p /data && chown appuser:appuser /data
