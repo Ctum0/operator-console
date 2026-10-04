@@ -4,9 +4,10 @@ FastAPI control plane for reviewing AI-proposed Sigma detection rules and mergin
 their GitHub PRs into [`Ctum0/detection-platform`](https://github.com/Ctum0/detection-platform)
 (which triggers that repo's CI: Sigma validation and Splunk SPL generation).
 
-Wazuh deployment in that repo is driven by `detections/wazuh/custom_rules.xml`, so a
-merged Sigma rule only alerts in Wazuh once its Wazuh rule is added there; that
-conversion is not automated yet.
+After a merge, that repo's `convert-deploy.yml` workflow converts the new Sigma
+rule to a Wazuh rule, merges it into `detections/wazuh/custom_rules.xml` and
+starts the Wazuh deploy. Proposals stay `merged` until an attack run proves the
+rule, which is recorded with **Record validation**.
 
 Part of the Detection Platform project — the console is the human approval gate:
 AI proposes → operator reviews here → approve merges the PR → CI/CD ships it.

@@ -628,7 +628,7 @@ html.locked .gate[hidden] { display:grid !important; }
     <!-- QUEUE -->
     <section class="page view" data-view="queue" aria-labelledby="tQueue" hidden>
       <div class="page-head">
-        <div><h1 id="tQueue">Review queue</h1><p>Approving merges the PR after its CI passes. Wazuh deploys rules from <code>detections/wazuh/</code>, so a merged Sigma rule also needs its Wazuh rule there before it can alert.</p></div>
+        <div><h1 id="tQueue">Review queue</h1><p>Approving merges the PR after its CI passes; the repo then converts the Sigma rule to Wazuh and deploys it.</p></div>
         <div class="actions"><button class="btn btn-primary" type="button" data-request><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>Request proposal</button></div>
       </div>
       <div class="qgrid" id="qgrid">
@@ -1153,7 +1153,7 @@ function detailHtml(p) {
     case 'merging': case 'approved':
       foot = '<span class="hint"><span class="dot accent pulse"></span>Checking the PR and its CI, then merging…</span>'; break;
     case 'merged':
-      foot = `<span class="hint">Merged into the repo. To alert, it also needs a Wazuh rule in detections/wazuh/; then fire the attack and record the alert.</span>
+      foot = `<span class="hint">Merged. The repo converts it to a Wazuh rule and deploys it; once that run finishes, fire the attack and record the alert.</span>
         <button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>${icon('shield')}Record validation</button>`; break;
     case 'validated': foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM. Nothing left to do.</span>`; break;
     case 'rejected':
