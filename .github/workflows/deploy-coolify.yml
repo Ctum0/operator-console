@@ -13,27 +13,32 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Coolify rebuild
+      - name: Restart the service on Coolify (rebuilds from main)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           if [ -z "$COOLIFY_TOKEN" ]; then
             echo "COOLIFY_TOKEN secret is not set"; exit 1
           fi
-          curl -fsS -X POST \
-            -H "Authorization: Bearer $COOLIFY_TOKEN" \
-            -H "Accept: application/json" \
-            -H "User-Agent: curl/8.5.0" \
-            https://coolify.ctum.org/api/v1/services/5pjvhg3rjdgcifotuhfgvssg/start
+          URL=https://coolify.ctum.org/api/v1/services/5pjvhg3rjdgcifotuhfgvssg/restart
+          CODE=$(curl -s -o /tmp/resp.txt -w '%{http_code}' -X POST -H "Authorization: Bearer $COOLIFY_TOKEN" -H "Accept: application/json" -H "User-Agent: curl/8.5.0" "$URL")
+          if grep -q "Just a moment" /tmp/resp.txt 2>/dev/null; then
+            echo "Blocked by Cloudflare's bot challenge (HTTP $CODE). Add a WAF skip rule for coolify.ctum.org /api/v1/ and console.ctum.org /healthz."
+            exit 1
+          fi
+          echo "restart request: HTTP $CODE"; head -c 300 /tmp/resp.txt; echo
+          case "$CODE" in 2*) ;; *) exit 1;; esac
 
       - name: Wait for the console to come back healthy
         run: |
-          set -euo pipefail
-          sleep 120
+          set -uo pipefail
+          sleep 180
           for i in $(seq 1 30); do
-            if curl -fsS -m 10 https://console.ctum.org/healthz >/dev/null; then
-              echo "console healthy"; exit 0
+            CODE=$(curl -s -o /tmp/health.txt -w '%{http_code}' -m 10 https://console.ctum.org/healthz)
+            if [ "$CODE" = "200" ]; then echo "console healthy"; exit 0; fi
+            if grep -q "Just a moment" /tmp/health.txt 2>/dev/null; then
+              echo "Blocked by Cloudflare's bot challenge on console.ctum.org"; exit 1
             fi
             sleep 10
           done
