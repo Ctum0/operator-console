@@ -13,28 +13,39 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Coolify rebuild
+      - name: Restart the service on Coolify (rebuilds from main)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           if [ -z "$COOLIFY_TOKEN" ]; then
-            echo "COOLIFY_TOKEN secret is not set"; exit 1
+            echo "::error::COOLIFY_TOKEN secret is not set"; exit 1
           fi
-          curl -fsS -X POST \
-            -H "Authorization: Bearer $COOLIFY_TOKEN" \
-            -H "Accept: application/json" \
-            -H "User-Agent: curl/8.5.0" \
-            https://coolify.ctum.org/api/v1/services/5pjvhg3rjdgcifotuhfgvssg/start
+          URL=https://coolify.ctum.org/api/v1/services/5pjvhg3rjdgcifotuhfgvssg/restart
+          CODE=$(curl -s -o resp.txt -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" -H "Accept: application/json" \
+            -H "User-Agent: curl/8.5.0" "$URL")
+          if grep -qi "just a moment\|cf-chl\|challenge-platform" resp.txt 2>/dev/null; then
+            echo "::error::Blocked by Cloudflare's bot challenge (HTTP $CODE). Add a WAF skip rule for coolify.ctum.org/api/v1/* and console.ctum.org/healthz."
+            exit 1
+          fi
+          echo "restart request: HTTP $CODE"; head -c 300 resp.txt; echo
+          case "$CODE" in
+            2*) ;;
+            401) echo "::error::Coolify rejected the token (HTTP 401). Regenerate COOLIFY_TOKEN."; exit 1 ;;
+            403) echo "::error::Coolify token lacks permission (HTTP 403). Create a token with the deploy permission in Coolify > Keys & Tokens and update COOLIFY_TOKEN."; exit 1 ;;
+            404) echo "::error::Service 5pjvhg3rjdgcifotuhfgvssg not found (HTTP 404). Check the service UUID."; exit 1 ;;
+            *) echo "::error::Coolify restart failed (HTTP $CODE)."; exit 1 ;;
+          esac
 
       - name: Wait for the console to come back healthy
         run: |
-          set -euo pipefail
-          sleep 120
+          set -uo pipefail
+          sleep 180
           for i in $(seq 1 30); do
             if curl -fsS -m 10 https://console.ctum.org/healthz >/dev/null; then
               echo "console healthy"; exit 0
             fi
             sleep 10
           done
-          echo "console not healthy after rebuild"; exit 1
+          echo "::error::console not healthy after rebuild"; exit 1
