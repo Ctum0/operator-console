@@ -21,7 +21,7 @@
   --ink: #f7f8f8;
   --ink-2: #d0d6e0;
   --ink-3: #8a8f98;
-  --ink-4: #62666d;
+  --ink-4: #787c84;   /* 4.5:1 on --bg and --panel */
   --accent: #58a6ff;
   --accent-hover: #79b6ff;
   --accent-dim: rgba(88,166,255,0.12);
@@ -63,6 +63,8 @@ a:hover { color: var(--accent-hover); }
 :focus-visible { outline: 2px solid rgba(88,166,255,0.45); outline-offset: 1px; border-radius: 4px; }
 code, .mono { font-family: var(--mono); letter-spacing: 0; }
 [hidden] { display: none !important; }
+.ic { width:14px; height:14px; flex:none; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.ic-sm { width:12px; height:12px; }
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
 /* ============ HEADER (glass allowed here only) ============ */
@@ -127,6 +129,7 @@ code, .mono { font-family: var(--mono); letter-spacing: 0; }
   display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;
 }
 .btn:disabled { opacity:0.55; cursor:not-allowed; }
+.btn .ic { margin-left:-2px; }
 .btn-sm { height:26px; padding:0 10px; font-size:12px; }
 .btn-primary {
   background:var(--accent); color:#04070c; border-color:var(--accent); font-weight:590;
@@ -156,7 +159,7 @@ code, .mono { font-family: var(--mono); letter-spacing: 0; }
   transition: border-color .12s ease;
 }
 .input:focus { outline:none; border-color:rgba(88,166,255,0.5); }
-.input::placeholder { color:var(--ink-4); }
+.input::placeholder { color:var(--ink-3); }
 .input.mono { font-family:var(--mono); font-size:12px; }
 textarea.input { height:auto; min-height:56px; padding:7px 10px; resize:vertical; line-height:1.5; }
 input[type="datetime-local"].input { color-scheme: dark; }
@@ -172,7 +175,8 @@ input[type="datetime-local"].input { color-scheme: dark; }
 main { min-width:0; }
 
 /* queue head + toolbar */
-.queue-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+.queue-head { display:flex; align-items:baseline; gap:12px; margin-bottom:4px; flex-wrap:wrap; }
+.queue-sub { color:var(--ink-3); font-size:12.5px; margin-bottom:18px; }
 .queue-head h1 { font-size:17px; font-weight:590; letter-spacing:-0.022em; color:var(--ink); line-height:1.3; }
 .count {
   color:var(--ink-3); font-size:12px; font-family:var(--mono);
@@ -206,61 +210,80 @@ main { min-width:0; }
 /* ============ PROPOSAL CARDS ============ */
 .card {
   background: var(--panel); border:1px solid var(--border); border-radius: var(--r);
-  margin-bottom:16px; overflow:hidden; transition: border-color .4s ease;
+  margin-bottom:12px; overflow:hidden; transition: border-color .2s ease;
 }
-.card.flash { border-color: rgba(88,166,255,0.55); }
+.card:hover { border-color: var(--border-2); }
+.card.flash { border-color: rgba(88,166,255,0.55); transition-duration:.4s; }
 .proposal-head { display:flex; align-items:flex-start; gap:12px; padding:16px 16px 0; }
-.proposal-id {
+.tech-chip {
   font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:0;
-  flex:none; padding-top:3px; min-width:64px;
+  flex:none; height:22px; padding:0 7px; border-radius:var(--r-sm); display:inline-flex; align-items:center;
+  background:var(--accent-dim); border:1px solid rgba(88,166,255,0.2); margin-top:-1px;
 }
 .proposal-title { flex:1; min-width:0; }
 .proposal-title h2 { font-size:14px; font-weight:590; letter-spacing:-0.014em; color:var(--ink); line-height:1.4; overflow-wrap:anywhere; }
-.sub { color:var(--ink-3); font-size:12px; margin-top:3px; display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; }
-.sub code {
-  font-size:11px; color:var(--ink-3); background:rgba(255,255,255,0.03); padding:1px 5px; border-radius:4px;
-  overflow-wrap:anywhere;
-}
+.sub { color:var(--ink-3); font-size:12px; margin-top:4px; display:flex; flex-wrap:wrap; gap:4px 14px; align-items:center; }
+.sub > span, .sub > a { display:inline-flex; align-items:center; gap:5px; min-width:0; }
+.sub .ic { color:var(--ink-4); }
+.sub a .ic { color:inherit; }
+.sub code { font-size:11px; color:var(--ink-3); overflow-wrap:anywhere; }
 .badge {
-  font-family:var(--mono); font-size:10.5px; font-weight:510; padding:2px 7px; border-radius:5px;
-  letter-spacing:0.04em; border:1px solid; flex:none; margin-top:1px; text-transform:uppercase;
-  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  font-size:11.5px; font-weight:510; padding:0 9px 0 8px; height:22px; border-radius:999px;
+  border:1px solid; flex:none; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  letter-spacing:-0.005em;
 }
-.badge .dot { width:6px; height:6px; }
-.b-pending { color:var(--pending); border-color:rgba(139,148,158,0.3); background:rgba(139,148,158,0.08); }
-.b-merging { color:var(--accent); border-color:rgba(88,166,255,0.3); background:var(--accent-dim); }
-.b-merged { color:var(--ok); border-color:rgba(63,185,80,0.3); background:var(--ok-dim); }
-.b-validated { color:#04130a; border-color:var(--ok); background:var(--ok); }
-.b-failed { color:var(--bad); border-color:rgba(248,81,73,0.3); background:var(--bad-dim); }
+.badge .dot { width:6px; height:6px; background:currentColor; }
+.badge .ic { width:12px; height:12px; }
+.b-pending { color:var(--ink-2); border-color:var(--border-2); background:rgba(255,255,255,0.03); }
+.b-pending .dot { background:var(--pending); }
+.b-merging { color:var(--accent); border-color:rgba(88,166,255,0.28); background:var(--accent-dim); }
+.b-merged { color:var(--ok); border-color:rgba(63,185,80,0.25); background:var(--ok-dim); }
+.b-validated { color:var(--ok); border-color:rgba(63,185,80,0.4); background:rgba(63,185,80,0.14); }
+.b-failed { color:var(--bad); border-color:rgba(248,81,73,0.28); background:var(--bad-dim); }
 .b-rejected { color:var(--ink-3); border-color:var(--border-2); background:transparent; }
+.b-rejected .dot { background:var(--ink-4); }
 
-.rationale { padding:10px 16px 14px; color:var(--ink-3); font-size:12.5px; max-width:78ch; overflow-wrap:anywhere; white-space:pre-line; }
+.rationale { padding:10px 16px 14px; color:var(--ink-2); font-size:13px; max-width:75ch; overflow-wrap:anywhere; white-space:pre-line; }
 
 /* YAML */
-.yaml-view { margin:0 16px 14px; position:relative; }
+.yaml-view { margin:0 16px 14px; border:1px solid var(--border-2); border-radius:var(--r-sm); background:var(--elev); overflow:hidden; }
+.yaml-bar { display:flex; align-items:center; gap:6px; height:32px; padding:0 6px 0 4px; }
+.yaml-view.open .yaml-bar { border-bottom:1px solid var(--border); }
+.yaml-toggle {
+  display:inline-flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer;
+  font:inherit; font-size:12px; font-weight:510; color:var(--ink-2); height:24px; padding:0 6px; border-radius:5px;
+}
+.yaml-toggle:hover { color:var(--ink); background:rgba(255,255,255,0.04); }
+.yaml-toggle .chev { transition: transform .15s ease; transform: rotate(-90deg); color:var(--ink-4); }
+.yaml-view.open .yaml-toggle .chev { transform:none; }
+.yaml-toggle small { font-family:var(--mono); font-size:10.5px; color:var(--ink-4); font-weight:400; }
 .yaml-view pre {
   font-family:var(--mono); font-size:12px; line-height:1.65; color:#b8c2cc;
-  background:var(--elev); border:1px solid var(--border-2); border-radius: var(--r-sm);
-  padding:12px 14px; overflow:auto; max-height:240px; letter-spacing:0; font-variant-numeric: normal;
+  padding:12px 14px; overflow:auto; max-height:260px; letter-spacing:0; font-variant-numeric: normal;
 }
+.yaml-view:not(.open) pre { display:none; }
 .yaml-view.expanded pre { max-height:none; }
 .yaml-view pre .k { color:rgba(88,166,255,0.85); }
 .yaml-view pre .s { color:#a5d6a0; }
 .yaml-view pre .c { color:var(--ink-4); font-style:italic; }
-.yaml-actions { position:absolute; top:8px; right:8px; display:flex; gap:4px; }
+.yaml-actions { margin-left:auto; display:flex; gap:2px; }
 .yaml-btn {
-  font-family:var(--mono); font-size:10.5px; letter-spacing:0; color:var(--ink-3);
-  background:rgba(25,26,27,0.92); border:1px solid var(--border-2); border-radius:5px;
-  height:22px; padding:0 8px; cursor:pointer; transition: color .12s ease, border-color .12s ease;
+  font:inherit; font-size:11.5px; color:var(--ink-3); background:none; border:none; border-radius:5px;
+  height:24px; padding:0 8px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
+  transition: color .12s ease, background .12s ease;
 }
-.yaml-btn:hover { color:var(--ink); border-color:var(--border-3); }
+.yaml-btn:hover { color:var(--ink); background:rgba(255,255,255,0.04); }
 
 /* callouts: merge error, rejection, validation evidence */
 .callout {
-  margin:0 16px 14px; padding:10px 12px; border-radius:var(--r-sm); font-size:12px;
+  margin:0 16px 14px; padding:10px 12px; border-radius:var(--r-sm); font-size:12.5px;
   border:1px solid var(--border-2); background:rgba(255,255,255,0.015); color:var(--ink-3);
-  overflow-wrap:anywhere;
+  overflow-wrap:anywhere; display:flex; gap:10px; align-items:flex-start;
 }
+.callout > .ic { margin-top:2px; color:var(--ink-4); }
+.callout.bad > .ic { color:var(--bad); }
+.callout.ok > .ic { color:var(--ok); }
+.callout > div { min-width:0; flex:1; }
 .callout b { color:var(--ink-2); font-weight:590; }
 .callout.bad { border-color:rgba(248,81,73,0.25); background:var(--bad-dim); }
 .callout.bad b { color:var(--bad); }
@@ -292,7 +315,8 @@ main { min-width:0; }
 
 /* drawers (reject / validate / notes) */
 .drawer { border-top:1px solid var(--border); padding:12px 16px 14px; background:rgba(255,255,255,0.01); }
-.drawer-title { font-size:11px; font-weight:590; color:var(--ink-3); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:10px; }
+.drawer-title { font-size:12.5px; font-weight:590; color:var(--ink); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+.drawer-title .ic { color:var(--ink-4); }
 .form-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
 .form-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; margin-bottom:10px; }
 .form-actions { display:flex; gap:8px; justify-content:flex-end; }
@@ -311,12 +335,14 @@ main { min-width:0; }
 .note-text { color:var(--ink-2); white-space:pre-wrap; overflow-wrap:anywhere; }
 
 /* empty / loading */
-.empty-state { padding:40px 16px; text-align:center; color:var(--ink-3); font-size:12.5px; }
-.empty-state::before {
-  content:""; display:block; width:32px; height:32px; margin:0 auto 12px;
-  border-radius:8px; border:1px dashed var(--border-2); background:rgba(255,255,255,0.02);
+.empty-state { padding:48px 16px; text-align:center; color:var(--ink-3); font-size:12.5px; }
+.empty-icon {
+  width:36px; height:36px; margin:0 auto 14px; border-radius:var(--r); display:grid; place-items:center;
+  background:var(--elev); border:1px solid var(--border-2); color:var(--ink-3);
 }
-.empty-state b { color:var(--ink-2); font-weight:590; display:block; margin-bottom:2px; }
+.empty-icon .ic { width:16px; height:16px; }
+.empty-state b { color:var(--ink); font-weight:590; display:block; margin-bottom:4px; font-size:13px; }
+.empty-state .btn { margin-top:14px; }
 .skeleton { position:relative; overflow:hidden; background:rgba(255,255,255,0.03); border-radius:6px; }
 .skeleton::after {
   content:""; position:absolute; inset:0;
@@ -332,7 +358,8 @@ main { min-width:0; }
 aside { min-width:0; }
 .panel { background: var(--panel); border:1px solid var(--border); border-radius: var(--r); padding:16px; margin-bottom:16px; min-width:0; }
 .panel-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
-.panel-head h3 { font-size:10.5px; font-weight:590; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-3); }
+.panel-head > .ic { color:var(--ink-4); }
+.panel-head h2 { font-size:12.5px; font-weight:590; letter-spacing:-0.01em; color:var(--ink); }
 .panel-head .aside-meta { margin-left:auto; font-size:11px; color:var(--ink-4); font-family:var(--mono); }
 .tag {
   font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:4px; border:1px solid;
@@ -388,17 +415,20 @@ aside { min-width:0; }
 /* toasts */
 .toasts { position:fixed; bottom:24px; right:24px; z-index:60; display:flex; flex-direction:column; gap:8px; align-items:flex-end; pointer-events:none; }
 .toast {
-  pointer-events:auto; background:var(--elev); border:1px solid var(--border-2); border-left:2px solid var(--ok);
-  color:var(--ink-2); padding:10px 14px; border-radius:var(--r); font-size:12.5px; max-width:380px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.45); animation: toast-in .18s ease-out;
+  pointer-events:auto; background:var(--elev); border:1px solid var(--border-2);
+  color:var(--ink-2); padding:10px 14px 10px 12px; border-radius:var(--r); font-size:12.5px; max-width:380px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45); animation: toast-in .2s cubic-bezier(.16,1,.3,1);
+  display:flex; gap:10px; align-items:flex-start;
 }
-.toast.bad { border-left-color:var(--bad); }
+.toast .ic { margin-top:2px; color:var(--ok); }
+.toast.bad .ic { color:var(--bad); }
 @keyframes toast-in { from { transform:translateY(6px); opacity:0; } to { transform:none; opacity:1; } }
 
 /* token gate */
 .gate { position:fixed; inset:0; z-index:50; background:var(--bg); display:grid; place-items:center; padding:16px; }
 .gate-card { width:100%; max-width:360px; background:var(--panel); border:1px solid var(--border-2); border-radius:var(--r); padding:24px; }
 .gate-card .brand { margin-bottom:18px; }
+.gate-card h2 { font-size:15px; font-weight:590; color:var(--ink); letter-spacing:-0.015em; margin-bottom:4px; }
 .gate-card p { font-size:12.5px; color:var(--ink-3); margin-bottom:14px; }
 .gate-card .btn { width:100%; margin-top:10px; height:34px; }
 .gate-card .error-line { min-height:18px; margin-top:8px; }
@@ -422,8 +452,12 @@ aside { min-width:0; }
   .shell { padding:16px; }
   aside { grid-template-columns: 1fr; }
   .disposition { display:none; }
+  .search kbd { display:none; }
+  .proposal-foot .meta { flex-basis:100%; }
+  .proposal-foot > .btn:first-of-type { margin-left:auto; }
   .proposal-head { flex-wrap:wrap; }
-  .proposal-id { min-width:0; }
+  .proposal-head .badge { margin-left:auto; }
+  .proposal-title { order:3; flex-basis:100%; }
   .toasts { left:16px; right:16px; bottom:16px; align-items:stretch; }
   .toast { max-width:none; }
 }
@@ -446,8 +480,8 @@ aside { min-width:0; }
   </nav>
   <span class="pill" id="healthPill" role="status"><span class="dot"></span><span class="label">Checking pipeline…</span></span>
   <div class="topbar-spacer"></div>
-  <button class="btn btn-ghost" id="lockBtn" type="button" title="Forget the token on this browser">Lock</button>
-  <button class="btn btn-primary" id="requestBtn" type="button" title="Ask the AI detection engineer for a new proposal">Request proposal</button>
+  <button class="btn btn-ghost" id="lockBtn" type="button" title="Forget the token on this browser"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Lock</button>
+  <button class="btn btn-primary" id="requestBtn" type="button" title="Ask the AI detection engineer for a new proposal"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg><span id="requestLabel">Request proposal</span></button>
 </header>
 
 <div class="shell">
@@ -457,6 +491,7 @@ aside { min-width:0; }
       <span class="count" id="queueCount">…</span>
       <span class="disposition" id="disposition"></span>
     </div>
+    <p class="queue-sub">AI-drafted Sigma rules waiting for a human decision. Approving merges the PR; CI then deploys the rule to Wazuh.</p>
     <div class="toolbar">
       <div class="tabs" role="tablist" aria-label="Filter proposals" id="tabs"></div>
       <label class="search">
@@ -473,25 +508,26 @@ aside { min-width:0; }
 
   <aside>
     <section class="panel" aria-labelledby="hHealth">
-      <div class="panel-head"><h3 id="hHealth">Pipeline health</h3><span class="aside-meta" id="healthAge"></span></div>
+      <div class="panel-head"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8h3l2-4.5 3 9 2-4.5h3"/></svg><h2 id="hHealth">Pipeline health</h2><span class="aside-meta" id="healthAge"></span></div>
       <div id="health"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
     </section>
 
     <section class="panel" aria-labelledby="hCov">
-      <div class="panel-head"><h3 id="hCov">ATT&amp;CK coverage</h3><span id="covStale"></span></div>
+      <div class="panel-head"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r=".6"/></svg><h2 id="hCov">ATT&amp;CK coverage</h2><span id="covStale"></span></div>
       <div id="coverage"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
     </section>
 
     <section class="panel" aria-labelledby="hTrig">
-      <div class="panel-head"><h3 id="hTrig">Agent runs</h3><span class="aside-meta" id="trigMeta"></span></div>
+      <div class="panel-head"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9h.01M10 9h.01M1.5 8.5v2M14.5 8.5v2"/></svg><h2 id="hTrig">Agent runs</h2><span class="aside-meta" id="trigMeta"></span></div>
       <div id="triggers"><div class="skeleton sk-row"></div></div>
     </section>
 
     <section class="panel" aria-labelledby="hAct">
       <div class="panel-head">
-        <h3 id="hAct">Activity</h3>
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+        <h2 id="hAct">Activity</h2>
         <span class="aside-meta" style="display:flex;gap:2px">
-          <button class="btn-link" type="button" data-export="csv" title="Download the full audit trail as CSV">CSV</button>
+          <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true" style="color:var(--ink-4);align-self:center"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg><button class="btn-link" type="button" data-export="csv" title="Download the full audit trail as CSV">CSV</button>
           <button class="btn-link" type="button" data-export="json" title="Download the full audit trail as JSON">JSON</button>
         </span>
       </div>
@@ -506,6 +542,7 @@ aside { min-width:0; }
 <div class="gate" id="gate" hidden>
   <form class="gate-card" id="gateForm">
     <div class="brand"><div class="brand-mark"><span></span></div><span class="brand-name">Detection Platform</span></div>
+    <h2>Sign in to the console</h2>
     <p>Enter the operator token to open the review queue. It is kept in this browser only.</p>
     <label class="sr-only" for="gateToken">Operator token</label>
     <input class="input mono" id="gateToken" type="password" placeholder="Operator token" autocomplete="current-password" required>
@@ -531,7 +568,8 @@ const ui = {
   tab: 'action', q: '', counts: {}, proposals: [],
   drawer: {},            // pid -> 'reject' | 'validate' | null
   notesOpen: new Set(),
-  yamlOpen: new Set(),
+  yamlOpen: new Set(),   // expanded (no height cap)
+  ruleOpen: {},          // pid -> bool, overrides the per-status default
   armed: {},             // pid -> timeout id (two-step approve)
   busy: new Set(),
   drafts: {},            // input key -> value, survives re-renders
@@ -543,6 +581,27 @@ try { ui.tab = localStorage.getItem('consoleTab') || 'action'; } catch (_) {}
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'action';
 
 const $ = id => document.getElementById(id);
+const ICONS = {
+  check: '<path d="M3.5 8.5l3 3 6-7"/>',
+  plus: '<path d="M8 3.5v9M3.5 8h9"/>',
+  x: '<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>',
+  retry: '<path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 2.5v3h-3"/>',
+  shield: '<path d="M8 1.5l5 2v4c0 3.2-2.2 5.6-5 7-2.8-1.4-5-3.8-5-7v-4z"/><path d="M5.8 8l1.6 1.6 2.8-3"/>',
+  note: '<path d="M2.5 3.5h11v7.5h-6l-3 2.5V11h-2z"/>',
+  pr: '<circle cx="4" cy="3.5" r="1.5"/><circle cx="4" cy="12.5" r="1.5"/><circle cx="12" cy="12.5" r="1.5"/><path d="M4 5v6M12 11V6.5a2 2 0 0 0-2-2H7.5M9 3 7.5 4.5 9 6"/>',
+  branch: '<circle cx="4" cy="3.5" r="1.5"/><circle cx="4" cy="12.5" r="1.5"/><circle cx="12" cy="4.5" r="1.5"/><path d="M4 5v6M12 6c0 3-4 2.5-7 5"/>',
+  clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/>',
+  copy: '<rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/>',
+  chevron: '<path d="M4 6l4 4 4-4"/>',
+  expand: '<path d="M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5 9.5 6.5M2.5 13.5l4-4"/>',
+  collapse: '<path d="M13.5 6H10V2.5M2.5 10H6v3.5M10 6l3.5-3.5M6 10l-3.5 3.5"/>',
+  alert: '<path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.6h.01"/>',
+  ban: '<circle cx="8" cy="8" r="6"/><path d="M3.8 12.2l8.4-8.4"/>',
+  inbox: '<path d="M2 9.5l2-6h8l2 6v4H2z"/><path d="M2 9.5h3.5l1 1.5h3l1-1.5H14"/>',
+  search: '<circle cx="7" cy="7" r="4.75"/><path d="m10.5 10.5 3 3"/>',
+  file: '<path d="M9 1.5H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8z"/><path d="M9 1.5v4h4M5.5 9h5M5.5 11.5h3"/>',
+};
+function icon(name, cls = '') { return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 16 16" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 function token() { try { return localStorage.getItem('consoleToken') || ''; } catch (_) { return ''; } }
 
 /* ================= api ================= */
@@ -571,11 +630,13 @@ function ago(ts) {
   if (s < 86400 * 30) return Math.round(s / 86400) + 'd ago';
   return new Date(t).toISOString().slice(0, 10);
 }
+function sentence(w) { w = String(w || ''); return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }
 function fmtTs(ts) { return ts ? String(ts).replace('T', ' ').replace('Z', ' UTC') : ''; }
 function toast(msg, ok = true) {
   const t = document.createElement('div');
   t.className = 'toast' + (ok ? '' : ' bad');
-  t.textContent = msg;
+  t.setAttribute('role', ok ? 'status' : 'alert');
+  t.innerHTML = icon(ok ? 'check' : 'alert') + '<span>' + esc(msg) + '</span>';
   $('toasts').appendChild(t);
   setTimeout(() => t.remove(), ok ? 3500 : 6000);
 }
@@ -596,7 +657,7 @@ function nowLocalInput() {
 
 /* ================= proposals ================= */
 const STATUS = {
-  pending: ['Pending', 'b-pending'],
+  pending: ['Pending review', 'b-pending'],
   approved: ['Approved', 'b-merging'],
   merging: ['Merging', 'b-merging'],
   merged: ['Merged', 'b-merged'],
@@ -604,6 +665,14 @@ const STATUS = {
   validated: ['Validated', 'b-validated'],
   rejected: ['Rejected', 'b-rejected'],
 };
+const NEEDS_DECISION = ['pending', 'merge_failed'];
+function ruleIsOpen(p) { return p.id in ui.ruleOpen ? ui.ruleOpen[p.id] : NEEDS_DECISION.includes(p.status); }
+function badgeHtml(p) {
+  const [label, cls] = STATUS[p.status] || [p.status, 'b-pending'];
+  const lead = p.status === 'validated' ? icon('shield') : p.status === 'merged' ? icon('pr')
+    : p.status === 'merge_failed' ? icon('alert') : `<span class="dot${p.status === 'merging' ? ' pulse' : ''}"></span>`;
+  return `<span class="badge ${cls}">${lead}${esc(label)}</span>`;
+}
 
 function steps(p) {
   const st = p.status;
@@ -623,24 +692,24 @@ function draft(key, fallback = '') { return key in ui.drafts ? ui.drafts[key] : 
 function actionsHtml(p) {
   const id = esc(p.id), busy = ui.busy.has(p.id) ? ' disabled' : '';
   const notesN = Array.isArray(p.notes) ? p.notes.length : 0;
-  const notesBtn = `<button class="btn btn-ghost btn-sm" type="button" data-act="notes" data-id="${id}" aria-expanded="${ui.notesOpen.has(p.id)}">Notes${notesN ? ' · ' + notesN : ''}</button>`;
+  const notesBtn = `<button class="btn btn-ghost" type="button" data-act="notes" data-id="${id}" aria-expanded="${ui.notesOpen.has(p.id)}">${icon('note')}Notes${notesN ? ' · ' + notesN : ''}</button>`;
   let main = '';
   switch (p.status) {
     case 'pending': {
       const armed = p.id in ui.armed;
-      main = `<button class="btn btn-approve${armed ? ' armed' : ''}" type="button" data-act="approve" data-id="${id}"${busy}>${armed ? 'Confirm merge' : 'Approve'}</button>
-              <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>Reject</button>`;
+      main = `<button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>${icon('x')}Reject</button>
+              <button class="btn btn-approve${armed ? ' armed' : ''}" type="button" data-act="approve" data-id="${id}"${busy}>${icon('check')}${armed ? 'Confirm merge' : 'Approve'}</button>`;
       break;
     }
     case 'merge_failed':
-      main = `<button class="btn btn-approve" type="button" data-act="retry" data-id="${id}"${busy}>Retry merge</button>
-              <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>Reject</button>`;
+      main = `<button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>${icon('x')}Reject</button>
+              <button class="btn btn-approve" type="button" data-act="retry" data-id="${id}"${busy}>${icon('retry')}Retry merge</button>`;
       break;
     case 'merging': case 'approved':
       main = '<span class="working"><span class="dot accent pulse"></span>Checking PR and CI, then merging…</span>';
       break;
     case 'merged':
-      main = `<button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>Record validation</button>`;
+      main = `<button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>${icon('shield')}Record validation</button>`;
       break;
   }
   return notesBtn + main;
@@ -651,7 +720,7 @@ function drawerHtml(p) {
   const busy = ui.busy.has(p.id) ? ' disabled' : '';
   let html = '';
   if (d === 'reject' && ['pending', 'merge_failed'].includes(p.status)) {
-    html += `<div class="drawer"><div class="drawer-title">Reject proposal</div>
+    html += `<div class="drawer"><div class="drawer-title">${icon('x')}Reject proposal</div>
       <div class="form-row">
         <div class="field" style="flex:1;min-width:200px"><label for="rr-${id}">Reason <small>(shown in the activity log)</small></label>
           <input class="input" id="rr-${id}" data-draft="reason:${id}" maxlength="1000" placeholder="e.g. too noisy on admin hosts" value="${esc(draft('reason:' + p.id))}"></div>
@@ -660,7 +729,7 @@ function drawerHtml(p) {
       </div></div>`;
   }
   if (d === 'validate' && p.status === 'merged') {
-    html += `<div class="drawer"><div class="drawer-title">Record validation evidence</div>
+    html += `<div class="drawer"><div class="drawer-title">${icon('shield')}Record validation evidence</div>
       <div class="form-grid">
         <div class="field"><label for="vr-${id}">Wazuh rule ID</label>
           <input class="input mono" id="vr-${id}" data-draft="rule:${id}" maxlength="64" placeholder="100013" value="${esc(draft('rule:' + p.id))}"></div>
@@ -678,7 +747,7 @@ function drawerHtml(p) {
   }
   if (ui.notesOpen.has(p.id)) {
     const notes = Array.isArray(p.notes) ? p.notes : [];
-    html += `<div class="drawer"><div class="drawer-title">Notes</div>
+    html += `<div class="drawer"><div class="drawer-title">${icon('note')}Notes</div>
       ${notes.length ? '<div class="notes">' + notes.map(n => `<div class="note"><span class="note-avatar" aria-hidden="true">${esc(String(n.author || '?').slice(0, 2))}</span>
         <div class="note-body"><div class="note-meta"><b>${esc(n.author)}</b> · <span title="${esc(fmtTs(n.ts))}">${esc(ago(n.ts))}</span></div><div class="note-text">${esc(n.text)}</div></div></div>`).join('') + '</div>'
         : '<p class="note-meta" style="margin-bottom:10px">No notes yet. Notes are append-only and visible to every operator.</p>'}
@@ -693,35 +762,44 @@ function drawerHtml(p) {
 
 function cardHtml(p) {
   const id = esc(p.id);
-  const [label, cls] = STATUS[p.status] || [p.status, 'b-pending'];
   const pr = safeUrl(p.pr_url);
-  const prLink = pr ? `<a href="${esc(pr)}" target="_blank" rel="noopener noreferrer">PR #${esc(p.pr_number)}</a>` : `PR #${esc(p.pr_number)}`;
+  const prLink = pr ? `<a href="${esc(pr)}" target="_blank" rel="noopener noreferrer">${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}</a>`
+    : `<span>${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}</span>`;
   let callout = '';
   if (p.status === 'merge_failed' && p.merge_error) {
     const why = String(p.merge_error).replace(/^merge blocked:\s*/i, '');
-    callout = `<div class="callout bad"><b>Merge blocked.</b> ${esc(why)}</div>`;
+    callout = `<div class="callout bad">${icon('alert')}<div><b>Merge blocked.</b> ${esc(why)}</div></div>`;
   }
-  if (p.status === 'rejected') callout = `<div class="callout"><b>Rejected.</b> ${esc(p.reject_reason || 'No reason given.')}</div>`;
+  if (p.status === 'rejected') callout = `<div class="callout">${icon('ban')}<div><b>Rejected.</b> ${esc(p.reject_reason || 'No reason given.')}</div></div>`;
   if (p.status === 'validated' && p.validation) {
     const v = p.validation, ev = safeUrl(v.evidence_url);
-    callout = `<div class="callout ok"><b>Validated against a real attack.</b>
+    callout = `<div class="callout ok">${icon('shield')}<div><b>Validated against a real attack.</b>
       <dl class="evidence"><dt>Rule</dt><dd>${esc(v.rule_id)}</dd><dt>Attack</dt><dd>${esc(v.attack)}</dd>
       <dt>Fired</dt><dd>${esc(fmtTs(v.fired_at))}</dd>
       ${ev ? `<dt>Evidence</dt><dd><a href="${esc(ev)}" target="_blank" rel="noopener noreferrer">${esc(ev)}</a></dd>` : ''}
-      <dt>Recorded</dt><dd>${esc(v.recorded_by || 'operator')} · ${esc(ago(v.recorded_at))}</dd></dl></div>`;
+      <dt>Recorded</dt><dd>${esc(v.recorded_by || 'operator')} · ${esc(ago(v.recorded_at))}</dd></dl></div></div>`;
   }
-  const yamlOpen = ui.yamlOpen.has(p.id);
+  const open = ruleIsOpen(p), expanded = ui.yamlOpen.has(p.id);
+  const lines = String(p.sigma_yaml || '').trimEnd().split('\n').length;
   return `<article class="card" id="card-${id}" data-id="${id}">
     <div class="proposal-head">
-      <span class="proposal-id">${esc(p.technique)}</span>
+      <span class="tech-chip">${esc(p.technique)}</span>
       <div class="proposal-title"><h2>${esc(p.title)}</h2>
-        <div class="sub">${prLink}<code>${esc(p.branch)}</code><span title="${esc(fmtTs(p.created_at))}">proposed ${esc(ago(p.created_at))}</span></div></div>
-      <span class="badge ${cls}">${p.status === 'merging' ? '<span class="dot accent pulse"></span>' : ''}${esc(label)}</span>
+        <div class="sub">${prLink}<span>${icon('branch', 'ic-sm')}<code>${esc(p.branch)}</code></span>
+          <span title="${esc(fmtTs(p.created_at))}">${icon('clock', 'ic-sm')}${esc(ago(p.created_at))}</span></div></div>
+      ${badgeHtml(p)}
     </div>
     <p class="rationale">${esc(p.reasoning)}</p>
-    <div class="yaml-view${yamlOpen ? ' expanded' : ''}"><pre id="yaml-${id}">${yamlHighlight(p.sigma_yaml || '')}</pre>
-      <div class="yaml-actions"><button class="yaml-btn" type="button" data-act="copy" data-id="${id}">copy</button>
-      <button class="yaml-btn" type="button" data-act="yaml" data-id="${id}" aria-expanded="${yamlOpen}">${yamlOpen ? 'collapse' : 'expand'}</button></div></div>
+    <div class="yaml-view${open ? ' open' : ''}${expanded ? ' expanded' : ''}">
+      <div class="yaml-bar">
+        <button class="yaml-toggle" type="button" data-act="rule" data-id="${id}" aria-expanded="${open}" aria-controls="yaml-${id}">${icon('chevron', 'chev')}Sigma rule <small>${lines} lines</small></button>
+        <div class="yaml-actions">
+          <button class="yaml-btn" type="button" data-act="copy" data-id="${id}" title="Copy YAML">${icon('copy', 'ic-sm')}<span>copy</span></button>
+          ${open ? `<button class="yaml-btn" type="button" data-act="yaml" data-id="${id}" aria-expanded="${expanded}" title="${expanded ? 'Limit height' : 'Show the whole rule'}">${icon(expanded ? 'collapse' : 'expand', 'ic-sm')}<span>${expanded ? 'collapse' : 'expand'}</span></button>` : ''}
+        </div>
+      </div>
+      <pre id="yaml-${id}">${yamlHighlight(p.sigma_yaml || '')}</pre>
+    </div>
     ${callout}
     <div class="proposal-foot"><span class="meta">${steps(p)}</span>${actionsHtml(p)}</div>
     ${drawerHtml(p)}
@@ -729,7 +807,7 @@ function cardHtml(p) {
 }
 
 function signature(p) {
-  return JSON.stringify([p, ui.drawer[p.id] || null, ui.notesOpen.has(p.id), ui.yamlOpen.has(p.id),
+  return JSON.stringify([p, ui.drawer[p.id] || null, ui.notesOpen.has(p.id), ui.yamlOpen.has(p.id), ruleIsOpen(p),
     p.id in ui.armed, ui.busy.has(p.id), Math.floor(Date.now() / 60000)]);
 }
 
@@ -751,9 +829,9 @@ function renderList(force) {
   const props = ui.proposals;
   if (!props.length) {
     ui.sigs = {};
-    const empty = ui.q ? `<b>No proposals match “${esc(ui.q)}”.</b>Try a technique ID like T1059.`
-      : ui.tab === 'action' ? '<b>Nothing needs review.</b>Use “Request proposal” to ask the AI detection engineer for a new rule.'
-      : '<b>No proposals in this view.</b>';
+    const empty = ui.q ? `<div class="empty-icon">${icon('search')}</div><b>No proposals match “${esc(ui.q)}”.</b>Try a technique ID such as T1059, or clear the search.`
+      : ui.tab === 'action' ? `<div class="empty-icon">${icon('inbox')}</div><b>You're all caught up.</b>Nothing is waiting for a decision.<br><button class="btn btn-ghost" type="button" data-act="request">${icon('plus')}Request a new proposal</button>`
+      : `<div class="empty-icon">${icon('inbox')}</div><b>No proposals in this view.</b>Proposals move here as they progress through review.`;
     list.innerHTML = `<div class="card empty-state">${empty}</div>`;
     return;
   }
@@ -815,7 +893,7 @@ async function refreshProposals() {
   try { await loadProposals(); }
   catch (e) {
     if (e instanceof AuthError) return;   // the gate takes over; polling resumes after unlock
-    if ($('list').querySelector('.skeleton')) $('list').innerHTML = `<div class="card empty-state"><b>Could not load proposals.</b>${esc(e.message)}</div>`;
+    if ($('list').querySelector('.skeleton')) $('list').innerHTML = `<div class="card empty-state"><div class="empty-icon">${icon('alert')}</div><b>Could not load proposals.</b>${esc(e.message)}. Retrying automatically.</div>`;
     console.warn(e);
     schedule(POLL_MS);                     // keep polling through transient failures
   }
@@ -871,17 +949,20 @@ const actions = {
     if (ui.notesOpen.has(id)) setTimeout(() => { const f = $('nt-' + id); if (f) f.focus(); }, 0);
   },
   yaml(id) { ui.yamlOpen.has(id) ? ui.yamlOpen.delete(id) : ui.yamlOpen.add(id); rerender(id); },
+  rule(id) { const p = findP(id); if (p) { ui.ruleOpen[id] = !ruleIsOpen(p); rerender(id); } },
   async copy(id, el) {
     const p = findP(id);
-    try { await navigator.clipboard.writeText(p ? p.sigma_yaml : ''); el.textContent = 'copied'; }
-    catch (_) { el.textContent = 'failed'; }
-    setTimeout(() => { el.textContent = 'copy'; }, 1500);
+    const label = el.querySelector('span') || el;
+    try { await navigator.clipboard.writeText(p ? p.sigma_yaml : ''); label.textContent = 'copied'; }
+    catch (_) { label.textContent = 'failed'; }
+    setTimeout(() => { label.textContent = 'copy'; }, 1500);
   },
 };
 
 $('list').addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
+  if (el.dataset.act === 'request') { $('requestBtn').click(); return; }
   const fn = actions[el.dataset.act];
   if (fn) fn(el.dataset.id, el);
 });
@@ -971,7 +1052,7 @@ function renderCoverage(cov) {
     <div class="cov-bar" role="img" aria-label="${ok} of ${items.length} validated"><i class="ok" style="width:${pct(ok)}"></i><i class="warn" style="width:${pct(warn)}"></i></div>
     <ul class="cov-list">${items.map(i => `<li><span class="id">${esc(i.id)}</span>
       <span class="tech" title="${esc(i.code + ' ' + i.name)}">${i.code ? `<code>${esc(i.code)}</code>` : ''}${esc(i.name)}</span>
-      <span class="st" title="${esc(i.status)}"><span class="dot ${i.lv}"></span>${esc(i.status.split(' ')[0])}</span></li>`).join('')}</ul>
+      <span class="st" title="${esc(i.status)}"><span class="dot ${i.lv}"></span>${esc(sentence(i.status.split(' ')[0]))}</span></li>`).join('')}</ul>
     <div class="panel-foot">${cov && cov.fetched_at ? 'Synced ' + esc(ago(cov.fetched_at)) : ''}${src ? ` · <a href="${esc(src.replace('raw.githubusercontent.com', 'github.com').replace(/\/main\//, '/blob/main/'))}" target="_blank" rel="noopener noreferrer">source</a>` : ''}</div>`;
   $('covStale').innerHTML = cov && cov.stale
     ? `<span class="tag warn" title="${esc((cov.sample ? 'Showing sample data. ' : 'Showing the last good copy. ') + 'Source error: ' + (cov.error || 'unknown'))}">${cov.sample ? 'sample' : 'stale'}</span>` : '';
@@ -1079,7 +1160,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ui
 /* ================= header actions ================= */
 $('requestBtn').addEventListener('click', async () => {
   const b = $('requestBtn');
-  b.disabled = true; b.textContent = 'Requesting…';
+  b.disabled = true; $('requestLabel').textContent = 'Requesting…';
   try {
     const r = await api('POST', '/api/trigger/propose');
     if (r.triggered) toast('Agent run started (' + r.trigger_id + ')');
@@ -1087,7 +1168,7 @@ $('requestBtn').addEventListener('click', async () => {
   } catch (e) { if (!(e instanceof AuthError)) toast('Request failed: ' + e.message, false); }
   finally {
     loadTriggers(); loadActivity();
-    setTimeout(() => { b.disabled = false; b.textContent = 'Request proposal'; }, 2000);
+    setTimeout(() => { b.disabled = false; $('requestLabel').textContent = 'Request proposal'; }, 2000);
   }
 });
 $('lockBtn').addEventListener('click', () => {
