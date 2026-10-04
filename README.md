@@ -68,7 +68,7 @@ docker compose up -d        # recreates the container with the new env
 ```
 
 The browser caches the old token — click "Change token" on the gate screen (or
-`localStorage.removeItem('console_token')` in DevTools) and paste the new one.
+`localStorage.removeItem('consoleToken')` in DevTools) and paste the new one.
 
 ## Ops notes
 
@@ -81,17 +81,25 @@ The browser caches the old token — click "Change token" on the gate screen (or
 
 ### Backup / restore of /data
 
-State lives in two JSON files on the host-mounted volume (`./data` -> `/data`
-in the container). Back them up like any state file — copy while the service is
-running is safe *for reads*, but take a consistent snapshot for restores:
+State lives in two JSON files in the `console-data` named volume, mounted at
+`/data` in the container. Docker Compose prefixes the volume with the project
+name, so locally it is `operator-console_console-data` (check with
+`docker volume ls`; Coolify uses its own name). The commands below run `tar`
+from the app image itself, so files keep `appuser` ownership. The current
+directory must be writable by uid 1000.
 
 ```bash
-# Backup
-tar czf "console-data-$(date +%F).tar.gz" data/proposals.json data/activity.json
+VOL=operator-console_console-data
 
-# Restore
+# Backup (safe while the service is running; writes are atomic)
+docker run --rm -v "$VOL":/data:ro -v "$PWD":/backup --entrypoint tar \
+  operator-console:latest czf "/backup/console-data-$(date +%F).tar.gz" \
+  -C /data proposals.json activity.json
+
+# Restore (stop first so the app cannot write mid-restore)
 docker compose stop operator-console
-tar xzf console-data-2026-10-03.tar.gz           # overwrites ./data/
+docker run --rm -v "$VOL":/data -v "$PWD":/backup:ro --entrypoint tar \
+  operator-console:latest xzf /backup/console-data-2026-10-03.tar.gz -C /data
 docker compose up -d operator-console
 curl -s http://localhost:8000/healthz            # verify container is back
 ```
@@ -103,7 +111,7 @@ Notes:
   so verify file sizes after a restore.
 - A corrupt JSON file is quarantined at runtime as `<name>.json.corrupt.<epoch>`
   and the API falls back to empty/sample data; if you see `.corrupt` files in
-  `./data`, restore from backup rather than hand-editing.
+  the volume, restore from backup rather than hand-editing.
 - All writes are atomic (temp file + `fsync` + `os.replace`), so a crash or
   `kill -9` mid-write can never tear `proposals.json`/`activity.json`.
 
@@ -129,7 +137,7 @@ docker compose up -d        # recreates the container with the new env
 ```
 
 - After rotating `CONSOLE_TOKEN`: the browser caches the old token — click
-  "Change token" on the gate screen (or `localStorage.removeItem('console_token')`)
+  "Change token" on the gate screen (or `localStorage.removeItem('consoleToken')`)
   and paste the new one. The n8n workflow's Bearer header must be updated in the
   same window or agent registrations will start failing with 401.
 - Rotation is atomic per restart; there is no dual-token window, so rotate the
