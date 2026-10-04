@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
+<script>
+  // Decide before first paint whether the token gate is needed, so the app
+  // shell never flashes behind it.
+  try { if (!localStorage.getItem('consoleToken')) document.documentElement.classList.add('locked'); }
+  catch (_) { document.documentElement.classList.add('locked'); }
+</script>
 <title>Operator Console</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='.5' y='.5' width='23' height='23' rx='6' fill='%2310243b' stroke='%2358a6ff' stroke-opacity='.5'/%3E%3Crect x='9' y='9' width='6' height='6' rx='2' fill='%2358a6ff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -424,7 +430,9 @@ aside { min-width:0; }
 .toast.bad .ic { color:var(--bad); }
 @keyframes toast-in { from { transform:translateY(6px); opacity:0; } to { transform:none; opacity:1; } }
 
-/* token gate */
+/* token gate: html.locked is set before first paint when no token is stored */
+html.locked .topbar, html.locked .shell { visibility:hidden; }
+html.locked .gate[hidden] { display:grid !important; }
 .gate { position:fixed; inset:0; z-index:50; background:var(--bg); display:grid; place-items:center; padding:16px; }
 .gate-card { width:100%; max-width:360px; background:var(--panel); border:1px solid var(--border-2); border-radius:var(--r); padding:24px; }
 .gate-card .brand { margin-bottom:18px; }
@@ -1180,6 +1188,7 @@ $('lockBtn').addEventListener('click', () => {
 /* ================= token gate ================= */
 function showGate(msg) {
   clearTimeout(ui.timer);
+  document.documentElement.classList.add('locked');
   $('gate').hidden = false;
   $('gateErr').textContent = msg || '';
   $('gateToken').value = '';
@@ -1196,6 +1205,7 @@ $('gateForm').addEventListener('submit', async e => {
     if (!r.ok) { $('gateErr').textContent = 'Console returned HTTP ' + r.status + '.'; return; }
     try { localStorage.setItem('consoleToken', t); } catch (_) { $('gateErr').textContent = 'This browser blocked storage; the token cannot be kept.'; return; }
     $('gate').hidden = true;
+    document.documentElement.classList.remove('locked');
     boot();
   } catch (err) { $('gateErr').textContent = 'Could not reach the console: ' + err.message; }
   finally { $('gateBtn').disabled = false; }

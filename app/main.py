@@ -382,7 +382,10 @@ async def _auth(request: Request, call_next):
 
 @app.get("/")
 async def index():
-    return FileResponse(str(Path(__file__).parent / "static" / "index.html"), media_type="text/html")
+    # no-cache: the browser must revalidate on every load (cheap 304 via the
+    # ETag), so a new deploy is picked up at once instead of a stale page.
+    return FileResponse(str(Path(__file__).parent / "static" / "index.html"), media_type="text/html",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/healthz")
