@@ -1,0 +1,40 @@
+name: Deploy to Coolify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-coolify
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify rebuild
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$COOLIFY_TOKEN" ]; then
+            echo "COOLIFY_TOKEN secret is not set"; exit 1
+          fi
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            -H "Accept: application/json" \
+            -H "User-Agent: curl/8.5.0" \
+            https://coolify.ctum.org/api/v1/services/5pjvhg3rjdgcifotuhfgvssg/start
+
+      - name: Wait for the console to come back healthy
+        run: |
+          set -euo pipefail
+          sleep 120
+          for i in $(seq 1 30); do
+            if curl -fsS -m 10 https://console.ctum.org/healthz >/dev/null; then
+              echo "console healthy"; exit 0
+            fi
+            sleep 10
+          done
+          echo "console not healthy after rebuild"; exit 1
