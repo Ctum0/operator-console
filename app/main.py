@@ -69,6 +69,9 @@ WAZUH_API_USER = os.getenv("WAZUH_API_USER", "")
 WAZUH_API_PASSWORD = os.getenv("WAZUH_API_PASSWORD", "")
 WAZUH_API_VERIFY_TLS = os.getenv("WAZUH_API_VERIFY_TLS", "true").strip().lower() not in ("0", "false", "no")
 N8N_PROPOSE_WEBHOOK = os.getenv("N8N_PROPOSE_WEBHOOK", "")
+# Shared secret sent as X-Webhook-Secret so the n8n webhook can reject callers
+# that are not this console. Optional; never logged.
+N8N_WEBHOOK_SECRET = os.getenv("N8N_WEBHOOK_SECRET", "")
 COVERAGE_PATH = os.getenv("COVERAGE_PATH", "modules/detection-pipeline/docs/attack-matrix.md").lstrip("/")
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 PROPOSALS_FILE = DATA_DIR / "proposals.json"
@@ -1351,7 +1354,8 @@ async def trigger_propose():
             N8N_PROPOSE_WEBHOOK,
             json={"source": "operator-console", "trigger_id": tid,
                   "result_path": f"/api/triggers/{tid}/result"},
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json",
+                     **({"X-Webhook-Secret": N8N_WEBHOOK_SECRET} if N8N_WEBHOOK_SECRET else {})},
         )
         ok = resp.is_success
         http_status = resp.status_code

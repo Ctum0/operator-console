@@ -45,6 +45,7 @@ in `localStorage`. **Lock** in the header forgets it.
 | `GITHUB_TOKEN` | for merges | Fine-grained PAT on `REPO`: **Pull requests: Read and write** (merge), **Actions: Read** (CI health), **Administration: Read** (self-hosted runner liveness; without it the runner row shows "unknown") |
 | `REPO` | no | Default `Ctum0/detection-platform` |
 | `N8N_PROPOSE_WEBHOOK` | for triggers | n8n webhook started by "Request proposal" |
+| `N8N_WEBHOOK_SECRET` | no | Sent as `X-Webhook-Secret` on every trigger so the n8n webhook can reject anyone else. Must match the n8n Header Auth credential |
 | `WAZUH_HOST`, `WAZUH_PORT` | no | TCP probe target, default `100.81.241.62:1514` |
 | `WAZUH_API_URL` | no | Wazuh manager API, e.g. `https://100.81.241.62:55000`. Enables the deep Wazuh check |
 | `WAZUH_API_USER`, `WAZUH_API_PASSWORD` | with `WAZUH_API_URL` | A read-only API user is enough |
