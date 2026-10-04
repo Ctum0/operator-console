@@ -16,8 +16,12 @@ pending ──approve──▶ merging ──▶ merged ──validated──▶
    └──reject──▶ rejected   (merge_failed can also be rejected)
 ```
 
-- **approve / retry** run the merge gate first: the PR must be open and every CI
-  check on its head commit must have passed. A blocked or failed merge becomes
+- **approve / retry** run the merge gate first: the PR must be open and at least
+  one CI check must have completed successfully, with none failing or running.
+  When the PR head is the repo CI's own `[skip ci]` commit that only touches
+  generated `detections/splunk/` files, the checks on its parent are used, since
+  that is where CI ran. The legacy status API is ignored when it has no entries
+  (GitHub reports such commits as `pending`). A blocked or failed merge becomes
   `merge_failed` with the reason, and can be retried.
 - **validated** closes the purple-team loop. It records evidence that the
   deployed rule fired on a real attack (Wazuh rule ID, the attack, when it fired),
@@ -90,6 +94,8 @@ clients keep working.
 | POST | `/api/proposals/{id}/approve` | 202, merge runs async behind the PR-open + CI gate. From `pending` or `merge_failed` |
 | POST | `/api/proposals/{id}/retry` | 202, same gate. From `merge_failed` only |
 | POST | `/api/proposals/{id}/reject` | Body `{"reason": "..."}`. From `pending` or `merge_failed` |
+| POST | `/api/proposals/{id}/reopen` | Undo a rejection: `rejected` → `pending`. The old reason stays in the activity log |
+| DELETE | `/api/proposals/{id}` | Remove a proposal that never shipped (`pending`, `rejected`, `merge_failed`). Merged and validated proposals are kept for the audit trail |
 | POST | `/api/proposals/{id}/notes` | 201. Body `{"text", "author"?}`. Append-only, any status |
 | POST | `/api/proposals/{id}/validated` | Body `{"rule_id", "attack", "fired_at", "evidence_url"?}`. From `merged` only. `fired_at` is ISO 8601, not in the future, not before the merge |
 | GET | `/api/health/pipeline` | `{components: [{name, status, level, detail}]}`, cached 60 s. `level` is `ok`, `warn`, `bad` or `unknown` |
@@ -232,10 +238,12 @@ docker compose up -d        # recreates the container with the new env
 | Component | What it checks |
 | --- | --- |
 | CI (GitHub Actions) | Latest workflow run on `REPO` and how long ago it ran |
-| CD runner (self-hosted) | Registered self-hosted runners and whether they are online. Old Actions successes can hide a dead runner, so this checks the runners directly |
+| CD runner (self-hosted) | Registered self-hosted runners and whether they are online. Without Administration: Read on the token, it infers health from Actions instead: a self-hosted job queued over 10 minutes is reported as down, otherwise the last self-hosted job is shown (marked inferred) |
 | Wazuh Manager | Plain TCP probe to `$WAZUH_HOST:$WAZUH_PORT` |
 | Wazuh API | Authenticates, then reads the API version, the core daemons (`analysisd`, `remoted`, `wazuh-db`) and the loaded rule count. Skipped until `WAZUH_API_URL` is set |
 | Agent Link (n8n) | Webhook configured, and how the latest trigger ended |
+
+A check that cannot run (missing configuration or permission) reports `level: unknown`. The UI shows it as **Not monitored** with the reason and does not count it towards a degraded pipeline.
 
 - The coverage file is fetched without the PAT, because the repo is public, so an
   expired token cannot break coverage. The PAT is only tried after a 404, which

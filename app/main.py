@@ -358,7 +358,7 @@ if CORS_ORIGINS:
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,  # explicit list only; "*" refused at import
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],
     )
 # else: no CORS middleware at all -> no Access-Control-* headers -> browsers
@@ -454,6 +454,68 @@ _CI_BAD_CONCLUSIONS = {"failure", "timed_out", "cancelled", "action_required", "
 _CI_OK_CONCLUSIONS = {"success", "neutral", "skipped"}
 
 
+async def _commit_ci(sha: str) -> tuple[list[str], list[str], bool]:
+    """(failures, pending, any_results) for one commit: check-runs plus legacy
+    statuses. The combined-status endpoint reports "pending" when a commit has
+    no statuses at all, so it only counts when statuses actually exist."""
+    failures: list[str] = []
+    pending: list[str] = []
+    any_runs = False
+    try:
+        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/commits/{sha}/check-runs")
+        if resp.is_success:
+            runs = resp.json().get("check_runs") or []
+            any_runs = bool(runs)
+            for run in runs:
+                name = str(run.get("name", "?"))[:64]
+                if run.get("status") != "completed":
+                    pending.append(name)
+                elif run.get("conclusion") in _CI_BAD_CONCLUSIONS:
+                    failures.append(f"{name}: {run.get('conclusion')}")
+                elif run.get("conclusion") not in _CI_OK_CONCLUSIONS:
+                    failures.append(f"{name}: unknown conclusion {run.get('conclusion')}")
+        else:
+            jlog("warning", "check_runs_fetch_failed", {"http": resp.status_code, "sha": sha})
+    except httpx.HTTPError as exc:
+        jlog("warning", "check_runs_fetch_error", {"error": exc.__class__.__name__, "sha": sha})
+    try:
+        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/commits/{sha}/status")
+        if resp.is_success:
+            body = resp.json()
+            if body.get("statuses"):
+                any_runs = True
+                combined = body.get("state")
+                if combined in ("failure", "error"):
+                    failures.append(f"combined-status: {combined}")
+                elif combined == "pending":
+                    pending.append("combined-status: pending")
+        else:
+            jlog("warning", "combined_status_fetch_failed", {"http": resp.status_code, "sha": sha})
+    except httpx.HTTPError as exc:
+        jlog("warning", "combined_status_fetch_error", {"error": exc.__class__.__name__, "sha": sha})
+    return failures, pending, any_runs
+
+
+async def _ci_bot_parent(sha: str) -> str | None:
+    """Parent SHA when `sha` is the repo CI's own "[skip ci]" commit that only
+    touches generated files (detections/splunk/), else None."""
+    try:
+        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/commits/{sha}")
+        if not resp.is_success:
+            return None
+        c = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    message = str((c.get("commit") or {}).get("message", ""))
+    author = str(((c.get("author") or {}).get("login")) or "")
+    parents = c.get("parents") or []
+    files = [f.get("filename", "") for f in (c.get("files") or [])]
+    if (author == "github-actions[bot]" and "[skip ci]" in message and len(parents) == 1
+            and files and all(f.startswith("detections/splunk/") for f in files)):
+        return parents[0].get("sha")
+    return None
+
+
 async def _ci_gate(pr_number: int) -> tuple[bool, str]:
     """Verify the PR is OPEN and its head-commit CI has passed.
 
@@ -479,51 +541,27 @@ async def _ci_gate(pr_number: int) -> tuple[bool, str]:
     if not sha:
         return False, f"PR #{pr_number} head SHA unavailable"
 
-    # 2. Check runs (GitHub Actions et al.) on the head commit.
-    failures: list[str] = []
-    pending: list[str] = []
-    any_runs = False
-    try:
-        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/commits/{sha}/check-runs")
-        if resp.is_success:
-            runs = resp.json().get("check_runs") or []
-            any_runs = any_runs or bool(runs)
-            for run in runs:
-                name = str(run.get("name", "?"))[:64]
-                if run.get("status") != "completed":
-                    pending.append(name)
-                elif run.get("conclusion") in _CI_BAD_CONCLUSIONS:
-                    failures.append(f"{name}: {run.get('conclusion')}")
-                elif run.get("conclusion") not in _CI_OK_CONCLUSIONS:
-                    failures.append(f"{name}: unknown conclusion {run.get('conclusion')}")
-        else:
-            jlog("warning", "check_runs_fetch_failed", {"http": resp.status_code, "sha": sha})
-    except httpx.HTTPError as exc:
-        jlog("warning", "check_runs_fetch_error", {"error": exc.__class__.__name__, "sha": sha})
-
-    # 3. Legacy commit statuses (repos still using the status API).
-    try:
-        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/commits/{sha}/status")
-        if resp.is_success:
-            combined = resp.json().get("state")
-            any_runs = any_runs or bool(resp.json().get("statuses"))
-            if combined in ("failure", "error"):
-                failures.append(f"combined-status: {combined}")
-            elif combined == "pending":
-                pending.append("combined-status: pending")
-        else:
-            jlog("warning", "combined_status_fetch_failed", {"http": resp.status_code, "sha": sha})
-    except httpx.HTTPError as exc:
-        jlog("warning", "combined_status_fetch_error", {"error": exc.__class__.__name__, "sha": sha})
-
+    # 2. CI results. Evaluate the head commit; if it carries no CI at all and is
+    # the repo CI's own "[skip ci]" bot commit that only touches generated files,
+    # evaluate its parent instead (that is where CI actually ran). Never passes
+    # without at least one completed, successful check.
+    evaluated = sha
+    failures, pending, any_runs = await _commit_ci(sha)
+    hops = 0
+    while not any_runs and hops < 3:
+        parent = await _ci_bot_parent(evaluated)
+        if not parent:
+            break
+        evaluated, hops = parent, hops + 1
+        failures, pending, any_runs = await _commit_ci(evaluated)
+    where = f"head {sha[:8]}" if evaluated == sha else f"{evaluated[:8]} (parent of CI bot commit {sha[:8]})"
     if failures:
-        return False, f"CI failed on head {sha[:8]}: {'; '.join(failures[:3])}"
+        return False, f"CI failed on {where}: {'; '.join(failures[:3])}"
     if pending:
-        return False, f"CI still running on head {sha[:8]}: {'; '.join(pending[:3])}"
+        return False, f"CI still running on {where}: {'; '.join(pending[:3])}"
     if not any_runs:
-        # Repo has no CI configured for this commit - nothing to wait for.
-        return True, "no CI checks configured for head commit"
-    return True, f"all CI checks passed on head {sha[:8]}"
+        return False, f"no CI results yet for head {sha[:8]}; wait for the PR checks to finish, then retry"
+    return True, f"all CI checks passed on {where}"
 
 
 async def _merge_pr(pid: str, pr_number: int) -> None:
@@ -881,6 +919,46 @@ async def reject_proposal(pid: str, payload: RejectIn | None = Body(default=None
     return {"id": pid, "status": "rejected", "reason": reason or None}
 
 
+@app.post("/api/proposals/{pid}/reopen")
+async def reopen_proposal(pid: str):
+    """Undo a rejection: rejected -> pending. The rejection reason is kept in
+    the activity log."""
+    async with _file_lock:
+        proposals = _read_list(PROPOSALS_FILE)
+        prop = _find_proposal(proposals, pid)
+        if not prop:
+            raise HTTPException(404, "proposal not found")
+        if prop.get("status") != "rejected":
+            raise HTTPException(409, f"proposal is {prop.get('status')}; only rejected proposals can be reopened")
+        reason = prop.pop("reject_reason", None)
+        prop["status"] = "pending"
+        _write_json(PROPOSALS_FILE, proposals)
+        _log_activity("operator", "proposal.reopened",
+                      f"{prop.get('technique')} (PR #{prop.get('pr_number')}) - was rejected: {reason or 'no reason given'}", pid)
+    return {"id": pid, "status": "pending"}
+
+
+_DELETABLE = ("pending", "rejected", "merge_failed")
+
+
+@app.delete("/api/proposals/{pid}")
+async def delete_proposal(pid: str):
+    """Remove a proposal that never shipped. Merged and validated proposals are
+    deployed detections and stay for the audit trail."""
+    async with _file_lock:
+        proposals = _read_list(PROPOSALS_FILE)
+        prop = _find_proposal(proposals, pid)
+        if not prop:
+            raise HTTPException(404, "proposal not found")
+        if pid in _pending_merges or prop.get("status") not in _DELETABLE:
+            raise HTTPException(409, f"proposal is {prop.get('status')}; only {', '.join(_DELETABLE)} proposals can be deleted")
+        proposals = [p for p in proposals if not (isinstance(p, dict) and p.get("id") == pid)]
+        _write_json(PROPOSALS_FILE, proposals)
+        _log_activity("operator", "proposal.deleted",
+                      f"{prop.get('technique')} - {str(prop.get('title', ''))[:120]} (PR #{prop.get('pr_number')}, was {prop.get('status')})", pid)
+    return {"id": pid, "deleted": True}
+
+
 @app.post("/api/proposals/{pid}/notes", status_code=201)
 async def add_note(pid: str, payload: NoteIn):
     """Append-only operator annotations ("blocked on ART", "FP risk, checking")."""
@@ -1034,6 +1112,67 @@ async def _probe_ci() -> dict[str, Any]:
     return {"name": "CI (GitHub Actions)", "status": status, "level": level, "detail": detail}
 
 
+async def _infer_runner_from_jobs(name: str) -> dict[str, Any]:
+    """Runner health from Actions data the token can read: any self-hosted job
+    stuck in the queue means no runner is picking up work; otherwise report the
+    most recent self-hosted job. Checked per workflow so frequent CI runs do not
+    hide the less frequent CD workflow."""
+    hint = "grant the token Administration: Read for live runner status"
+    now = time.time()
+
+    async def jobs_of(run_id: Any) -> list[dict[str, Any]]:
+        try:
+            jr = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/runs/{run_id}/jobs?per_page=30")
+            return jr.json().get("jobs", []) if jr.is_success else []
+        except (httpx.HTTPError, ValueError):
+            return []
+
+    # 1. Backlog: queued runs whose self-hosted jobs have waited > 10 minutes.
+    for status in ("queued", "waiting"):
+        try:
+            resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/runs?status={status}&per_page=10")
+            waiting = resp.json().get("workflow_runs", []) if resp.is_success else []
+        except (httpx.HTTPError, ValueError):
+            waiting = []
+        for run in waiting:
+            for job in await jobs_of(run.get("id")):
+                created = _parse_iso(job.get("created_at") or "")
+                if ("self-hosted" in (job.get("labels") or []) and job.get("status") in ("queued", "waiting", "pending")
+                        and created and now - created.timestamp() > 600):
+                    return {"name": name, "status": "offline", "level": "bad",
+                            "detail": f"self-hosted job '{str(job.get('name'))[:40]}' queued "
+                                      f"{int((now - created.timestamp()) // 60)}m with no runner picking it up (inferred; {hint})"}
+
+    # 2. Most recent completed self-hosted job, looking at each workflow's latest runs.
+    try:
+        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/workflows?per_page=30")
+        workflows = resp.json().get("workflows", []) if resp.is_success else []
+    except (httpx.HTTPError, ValueError):
+        workflows = []
+    last = None
+    for wf in workflows:
+        try:
+            resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/workflows/{wf.get('id')}/runs?per_page=3&status=completed")
+            runs = resp.json().get("workflow_runs", []) if resp.is_success else []
+        except (httpx.HTTPError, ValueError):
+            runs = []
+        for run in runs:
+            hosted = [j for j in await jobs_of(run.get("id"))
+                      if "self-hosted" in (j.get("labels") or []) and j.get("status") == "completed"]
+            if hosted:
+                job = max(hosted, key=lambda j: j.get("completed_at") or "")
+                if last is None or (job.get("completed_at") or "") > (last.get("completed_at") or ""):
+                    last = job
+                break
+    if last is None:
+        return {"name": name, "status": "unknown", "level": "unknown",
+                "detail": f"no self-hosted jobs found to infer from; {hint}"}
+    ok = last.get("conclusion") in _CI_OK_CONCLUSIONS
+    return {"name": name, "status": "inferred", "level": "ok" if ok else "warn",
+            "detail": f"last self-hosted job ran on {str(last.get('runner_name') or '?')[:32]} "
+                      f"{_age(last.get('completed_at'))} ({last.get('conclusion')}); no queued backlog (inferred)"}
+
+
 async def _probe_runners() -> dict[str, Any]:
     """Self-hosted runner liveness: Actions history can show old successes
     while the CD runner is dead, so check the runners themselves."""
@@ -1046,8 +1185,9 @@ async def _probe_runners() -> dict[str, Any]:
         return {"name": name, "status": "unknown", "level": "unknown",
                 "detail": f"GitHub API unreachable: {exc.__class__.__name__}"}
     if resp.status_code in (403, 404):
-        return {"name": name, "status": "unknown", "level": "unknown",
-                "detail": f"HTTP {resp.status_code}: token needs Administration: Read to list runners"}
+        # Listing runners needs Administration: Read. Fall back to evidence the
+        # token can read (Actions): queued self-hosted jobs and the last one run.
+        return await _infer_runner_from_jobs(name)
     if not resp.is_success:
         return {"name": name, "status": "unknown", "level": "unknown", "detail": f"GitHub API HTTP {resp.status_code}"}
     runners = resp.json().get("runners") or []

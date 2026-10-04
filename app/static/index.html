@@ -243,6 +243,7 @@ select.input { appearance:none; padding-right:30px; cursor:pointer;
   border:1px solid var(--border-2); border-radius:5px; padding:0 6px; line-height:18px; background: var(--panel);
 }
 .seg { display:flex; gap:2px; padding:3px; border:1px solid var(--border-2); border-radius:var(--r); background: var(--side); overflow-x:auto; min-width:0; }
+#tabs { flex-wrap:wrap; overflow:visible; }
 .seg button {
   font:inherit; font-size:12.5px; font-weight:500; color:var(--ink-3); background:none; border:none; cursor:pointer;
   height:28px; padding: 0 10px; border-radius: var(--r-sm); white-space:nowrap; display:inline-flex; align-items:center; gap:6px;
@@ -338,7 +339,7 @@ a.kpi:hover { border-color: var(--border-2); background: #13131c; color:inherit;
   background: rgba(255,255,255,0.012); flex-wrap:wrap; border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 .qdetail-foot .hint { margin-right:auto; font-size:12.5px; color:var(--ink-3); display:flex; align-items:center; gap:8px; }
-.back { display:none; margin-bottom:14px; }
+.back { display:inline-flex; margin-bottom:14px; }
 .d-head { display:flex; align-items:flex-start; gap:14px; }
 .d-head h2 { font-size:19px; font-weight:650; color:var(--ink); letter-spacing:-0.025em; line-height:1.3; overflow-wrap:anywhere; margin-top:8px; }
 .d-head .grow { flex:1; min-width:0; }
@@ -504,7 +505,6 @@ html.locked .gate[hidden] { display:grid !important; }
   .qitems, .qdetail-scroll { overflow:visible; }
   .qgrid.has-sel .qlist { display:none; }
   .qgrid:not(.has-sel) .qdetail { display:none; }
-  .back { display:inline-flex; }
   .qdetail-scroll { padding: 18px 16px; }
   .qdetail-foot { position:sticky; bottom:0; background: var(--panel); padding: 12px 16px; }
   .qdetail-foot .hint { flex-basis:100%; }
@@ -840,8 +840,12 @@ function lvDot(lv) { return lv === 'unknown' ? 'muted' : lv; }
 function healthSummary() {
   const comps = (S.health && S.health.components) || [];
   const lv = comps.map(levelOf);
-  const worst = !comps.length ? 'unknown' : lv.includes('bad') ? 'bad' : lv.some(l => l === 'warn' || l === 'unknown') ? 'warn' : 'ok';
-  return { comps, worst, ok: lv.filter(l => l === 'ok').length, bad: comps.filter(c => levelOf(c) === 'bad') };
+  // A check that cannot run (missing config or permission) is "not monitored":
+  // shown with its reason, but it does not make the pipeline look degraded.
+  const watched = lv.filter(l => l !== 'unknown');
+  const worst = !comps.length ? 'unknown' : watched.includes('bad') ? 'bad' : watched.includes('warn') ? 'warn' : 'ok';
+  return { comps, worst, ok: lv.filter(l => l === 'ok').length, monitored: watched.length,
+           unmonitored: comps.filter(c => levelOf(c) === 'unknown'), bad: comps.filter(c => levelOf(c) === 'bad') };
 }
 function covLevel(status) {
   const s = String(status).toLowerCase();
@@ -870,7 +874,12 @@ function parseHash() {
 }
 function go(view, sel) { location.hash = '#/' + view + (sel ? '/' + encodeURIComponent(sel) : ''); }
 const TITLES = { overview: 'Overview', queue: 'Review queue', coverage: 'Coverage', runs: 'Agent runs', activity: 'Activity', health: 'Pipeline health' };
+function backLabel() {
+  const prev = (S.prevRoute || '').replace(/^#\/?/, '').split('/')[0];
+  return prev && prev !== 'queue' && TITLES[prev] ? 'Back to ' + TITLES[prev] : 'All proposals';
+}
 function applyRoute() {
+  if (S.curRoute !== location.hash) { S.prevRoute = S.curRoute || ''; S.curRoute = location.hash; }
   const r = parseHash();
   const changed = r.view !== S.view;
   S.view = r.view;
@@ -911,7 +920,8 @@ function renderOverview() {
   sl.querySelector('.dot').className = 'dot ' + lvDot(S.health ? h.worst : 'unknown') + (h.worst === 'ok' ? ' pulse' : '');
   sl.querySelector('.state').className = 'state ' + (S.health ? h.worst : '');
   sl.querySelector('.state').textContent = stateTxt;
-  $('checkedAgo').textContent = S.health ? (h.bad.length ? h.bad.map(x => x.name).join(', ') + ' down · ' : '') + 'checked ' + ago(S.health.checked_at) : 'pipeline status loading';
+  $('checkedAgo').textContent = S.health ? (h.bad.length ? h.bad.map(x => x.name).join(', ') + ' down · ' : '')
+    + (h.unmonitored.length ? h.unmonitored.length + ' not monitored · ' : '') + 'checked ' + ago(S.health.checked_at) : 'pipeline status loading';
   const ok = items.filter(i => i.lv === 'ok').length;
   const kpi = (href, ic, tint, label, value, sub, subCls) => `<a class="card kpi" href="${href}" style="--tint:${tint}">
       <div class="kpi-label">${icon(ic)}${label}</div><div class="kpi-value">${value}</div>
@@ -924,8 +934,9 @@ function renderOverview() {
     kpi('#/queue', 'merge', 'var(--accent-text)', 'Rules shipped', merged + validated,
       merged ? `${merged} awaiting validation` : merged + validated ? 'All shipped rules validated' : 'None merged yet', merged ? 'warn' : ''),
     kpi('#/health', 'pulse', h.worst === 'bad' ? 'var(--bad)' : h.worst === 'ok' ? 'var(--ok)' : 'var(--warn)', 'Pipeline checks',
-      h.comps.length ? `${h.ok}<small>/${h.comps.length}</small>` : '–',
-      !h.comps.length ? 'Checking…' : h.worst === 'ok' ? 'All checks passing' : `${h.comps.length - h.ok} need attention`, h.worst === 'ok' ? 'ok' : h.worst === 'bad' ? 'bad' : 'warn'),
+      h.comps.length ? `${h.ok}<small>/${h.monitored}</small>` : '–',
+      !h.comps.length ? 'Checking…' : (h.worst === 'ok' ? 'All monitored checks passing' : `${h.monitored - h.ok} need attention`)
+        + (h.unmonitored.length ? ` · ${h.unmonitored.length} not monitored` : ''), h.worst === 'ok' ? 'ok' : h.worst === 'bad' ? 'bad' : 'warn'),
   ].join('');
   if (S.health) {
     $('ovHealth').innerHTML = h.comps.length ? h.comps.map(c => `<div class="hrow"><span class="dot ${lvDot(levelOf(c))}"></span>
@@ -1121,16 +1132,18 @@ function detailHtml(p) {
   const expanded = S.yamlOpen.has(p.id);
   const lines = String(p.sigma_yaml || '').trimEnd().split('\n').length;
   let foot = '';
+  const delArmed = ('del:' + p.id) in S.armed;
+  const delBtn = `<button class="btn btn-reject" type="button" data-act="delete" data-id="${id}"${busy} title="Remove this proposal from the console">${icon(delArmed ? 'alert' : 'x')}${delArmed ? 'Confirm delete' : 'Delete'}</button>`;
   switch (p.status) {
     case 'pending': {
       const armed = p.id in S.armed;
-      foot = `<span class="hint">${armed ? icon('alert') + 'Click again to merge PR #' + esc(p.pr_number) : 'Approving merges the PR once its CI is green.'}</span>
+      foot = `<span class="hint">${armed ? icon('alert') + 'Click again to merge PR #' + esc(p.pr_number) : 'Approving merges the PR once its CI is green.'}</span>${delBtn}
         <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>${icon('x')}Reject</button>
         <button class="btn btn-approve${armed ? ' armed' : ''}" type="button" data-act="approve" data-id="${id}"${busy}>${icon('check')}${armed ? 'Confirm merge' : 'Approve'}</button>`;
       break;
     }
     case 'merge_failed':
-      foot = `<span class="hint">The merge gate blocked this PR. Fix the cause, then retry.</span>
+      foot = `<span class="hint">The merge gate blocked this PR. Fix the cause, then retry.</span>${delBtn}
         <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>${icon('x')}Reject</button>
         <button class="btn btn-approve" type="button" data-act="retry" data-id="${id}"${busy}>${icon('retry')}Retry merge</button>`;
       break;
@@ -1140,10 +1153,12 @@ function detailHtml(p) {
       foot = `<span class="hint">Deployed. Fire the attack and record the alert to prove it.</span>
         <button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>${icon('shield')}Record validation</button>`; break;
     case 'validated': foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM. Nothing left to do.</span>`; break;
-    case 'rejected': foot = '<span class="hint">Rejected. Re-registering the PR reopens it.</span>'; break;
+    case 'rejected':
+      foot = `<span class="hint">Rejected. Reopen it to review again, or delete it.</span>${delBtn}
+        <button class="btn btn-ghost" type="button" data-act="reopen" data-id="${id}"${busy}>${icon('retry')}Reopen</button>`; break;
   }
   return `<div class="qdetail-scroll" data-id="${id}">
-    <a class="btn btn-ghost btn-sm back" href="#/queue">${icon('back')}All proposals</a>
+    <button class="btn btn-ghost btn-sm back" type="button" data-act="back">${icon('back')}${esc(backLabel())}</button>
     <div class="d-head"><div class="grow"><span class="chip">${esc(p.technique)}</span><h2>${esc(p.title)}</h2>
       <div class="d-meta">${pr ? `<a href="${esc(pr)}" target="_blank" rel="noopener noreferrer">${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}${icon('ext', 'ic-sm')}</a>` : `<span>${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}</span>`}
         <span>${icon('branch', 'ic-sm')}<code>${esc(p.branch)}</code></span><span title="${esc(fmtTs(p.created_at))}">${icon('clock', 'ic-sm')}Proposed ${esc(ago(p.created_at))}</span></div></div>
@@ -1273,7 +1288,8 @@ function renderRuns() {
 function actLevel(a) {
   const x = String(a.action || '');
   if (/validated|merged$|succeeded/.test(x)) return 'ok';
-  if (/failed|rejected/.test(x)) return 'bad';
+  if (/failed|rejected|deleted/.test(x)) return 'bad';
+  if (/reopened/.test(x)) return 'accent';
   if (/approved|retried|merging|triggered/.test(x)) return 'accent';
   return 'muted';
 }
@@ -1317,7 +1333,7 @@ function renderHealthView() {
   $('healthChecked').textContent = 'Checked ' + ago(S.health.checked_at);
   $('healthGrid').innerHTML = h.comps.map(c => {
     const lv = levelOf(c);
-    const label = lv === 'ok' ? 'Healthy' : lv === 'warn' ? 'Degraded' : lv === 'bad' ? 'Down' : 'Unknown';
+    const label = lv === 'ok' ? 'Healthy' : lv === 'warn' ? 'Degraded' : lv === 'bad' ? 'Down' : 'Not monitored';
     return `<div class="card hcard"><div class="top"><span class="ibox">${icon(COMP_ICON(c.name))}</span><h3>${esc(c.name)}</h3>
       <span class="pill ${lv === 'unknown' ? 'muted' : lv}"><span class="dot"></span>${label}</span></div>
       <div class="detail">${esc(c.detail)}</div><div class="raw">Reported status: <code>${esc(c.status)}</code></div></div>`;
@@ -1352,6 +1368,20 @@ const actions = {
     const p = findP(id);
     const reason = ('Dismissed as dead: ' + String((p && p.merge_error) || '').replace(/^merge blocked:\s*/i, '')).slice(0, 300);
     await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/reject`, { reason }), 'Proposal dismissed');
+  },
+  async reopen(id) { await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/reopen`), 'Proposal reopened'); },
+  async delete(id) {
+    const key = 'del:' + id;
+    if (!(key in S.armed)) {
+      S.armed[key] = setTimeout(() => { delete S.armed[key]; renderDetail(true); }, 4000);
+      return renderDetail(true);
+    }
+    clearTimeout(S.armed[key]); delete S.armed[key];
+    const r = await run(id, () => api('DELETE', `/api/proposals/${encodeURIComponent(id)}`), 'Proposal deleted');
+    if (r) { S.sel = null; history.replaceState(null, '', '#/queue'); renderQueue(); }
+  },
+  back() {
+    if (S.prevRoute && S.prevRoute !== location.hash) history.back(); else go('queue');
   },
   async retry(id) { await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/retry`), 'Retrying merge'); },
   async reject(id) {
@@ -1453,6 +1483,9 @@ $('menuBtn').addEventListener('click', () => {
   if (open) setTimeout(() => { const cur = document.querySelector('#sidebar [aria-current="page"]') || document.querySelector('#sidebar [data-nav]'); if (cur) cur.focus(); }, 0);
 });
 $('scrim').addEventListener('click', () => { closeNav(); $('menuBtn').focus(); });
+// Tapping the current section's link does not change the hash, so close the
+// drawer on any navigation tap rather than relying on hashchange.
+$('sidebar').addEventListener('click', e => { if (e.target.closest('a[href^="#/"]')) closeNav(); });
 
 /* ================= loading ================= */
 async function loadProposals() {
