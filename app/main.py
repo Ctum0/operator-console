@@ -162,53 +162,9 @@ def jlog(level: str, event: str, detail: Any = None) -> None:
 # ---------------------------------------------------------------------------
 _file_lock = asyncio.Lock()
 
-SAMPLE_PROPOSALS: list[dict[str, Any]] = [
-    {
-        "id": "prop-a1b2c3d4e5f6",
-        "created_at": "2026-10-01T09:12:00Z",
-        "status": "pending",
-        "technique": "T1078.003",
-        "title": "Local account login outside business hours",
-        "sigma_yaml": (
-            "title: Local account login outside business hours\n"
-            "id: 0f21a4d9-8b1e-4c2a-9f3e-6d7a01b2c3d4\n"
-            "status: experimental\n"
-            "logsource:\n"
-            "  product: windows\n"
-            "  service: security\n"
-            "detection:\n"
-            "  selection:\n"
-            "    EventID: 4624\n"
-            "    LogonType: 10\n"
-            "  filter:\n"
-            "    Computer|startswith: WK-\n"
-            "  condition: selection and not filter\n"
-            "falsepositives:\n"
-            "  - Legitimate after-hours administration\n"
-            "level: medium\n"
-            "tags:\n"
-            "  - attack.lateral_movement\n"
-            "  - attack.t1078.003\n"
-        ),
-        "reasoning": (
-            "RDP-based interactive logons (LogonType 10) arriving outside the "
-            "standard 08:00-18:00 window are a strong privilege-abuse signal for "
-            "this environment; no known scheduled jobs use RDP."
-        ),
-        "pr_url": "https://github.com/Ctum0/detection-platform/pull/12",
-        "pr_number": 12,
-        "branch": "ai/proposal-t1078-003-offhours-rdp",
-    }
-]
-
-SAMPLE_ACTIVITY: list[dict[str, Any]] = [
-    {
-        "ts": "2026-10-01T09:12:05Z",
-        "actor": "agent",
-        "action": "proposal.registered",
-        "detail": "T1078.003 - Local account login outside business hours (PR #12)",
-    }
-]
+# First start begins empty: a seeded fake proposal would point at a real PR number.
+SAMPLE_PROPOSALS: list[dict[str, Any]] = []
+SAMPLE_ACTIVITY: list[dict[str, Any]] = []
 
 SAMPLE_COVERAGE_MD = """\
 # ATT&CK coverage matrix
@@ -383,6 +339,23 @@ async def _auth(request: Request, call_next):
     return await call_next(request)
 
 
+_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "
+        "base-uri 'none'; form-action 'self'")
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("Content-Security-Policy", _CSP)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
 @app.get("/")
 async def index():
     # no-cache: the browser must revalidate on every load (cheap 304 via the
@@ -516,30 +489,31 @@ async def _ci_bot_parent(sha: str) -> str | None:
     return None
 
 
-async def _ci_gate(pr_number: int) -> tuple[bool, str]:
+async def _ci_gate(pr_number: int) -> tuple[bool, str, str | None]:
     """Verify the PR is OPEN and its head-commit CI has passed.
 
-    Returns (ok, detail). Never raises: network failures surface as ok=False
+    Returns (ok, detail, head_sha); head_sha is the commit that was checked,
+    so the merge can be pinned to exactly what CI approved. Never raises: network failures surface as ok=False
     with a clear reason so the operator can retry the approve later.
     """
     # 1. PR must exist and be open.
     try:
         resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/pulls/{pr_number}")
     except httpx.HTTPError as exc:
-        return False, f"GitHub unreachable while checking PR state: {exc.__class__.__name__}"
+        return False, f"GitHub unreachable while checking PR state: {exc.__class__.__name__}", None
     if resp.status_code == 404:
-        return False, f"PR #{pr_number} not found in {REPO} (HTTP 404)"
+        return False, f"PR #{pr_number} not found in {REPO} (HTTP 404)", None
     if not resp.is_success:
-        return False, f"GitHub PR fetch failed (HTTP {resp.status_code})"
+        return False, f"GitHub PR fetch failed (HTTP {resp.status_code})", None
     prj = resp.json()
     state = prj.get("state")
     if prj.get("merged") or state == "closed":
-        return False, f"PR #{pr_number} is {state} (merged={bool(prj.get('merged'))}), not open"
+        return False, f"PR #{pr_number} is {state} (merged={bool(prj.get('merged'))}), not open", None
     if state != "open":
-        return False, f"PR #{pr_number} is in unexpected state '{state}'"
+        return False, f"PR #{pr_number} is in unexpected state '{state}'", None
     sha = (prj.get("head") or {}).get("sha")
     if not sha:
-        return False, f"PR #{pr_number} head SHA unavailable"
+        return False, f"PR #{pr_number} head SHA unavailable", None
 
     # 2. CI results. Evaluate the head commit; if it carries no CI at all and is
     # the repo CI's own "[skip ci]" bot commit that only touches generated files,
@@ -556,19 +530,19 @@ async def _ci_gate(pr_number: int) -> tuple[bool, str]:
         failures, pending, any_runs = await _commit_ci(evaluated)
     where = f"head {sha[:8]}" if evaluated == sha else f"{evaluated[:8]} (parent of CI bot commit {sha[:8]})"
     if failures:
-        return False, f"CI failed on {where}: {'; '.join(failures[:3])}"
+        return False, f"CI failed on {where}: {'; '.join(failures[:3])}", None
     if pending:
-        return False, f"CI still running on {where}: {'; '.join(pending[:3])}"
+        return False, f"CI still running on {where}: {'; '.join(pending[:3])}", None
     if not any_runs:
-        return False, f"no CI results yet for head {sha[:8]}; wait for the PR checks to finish, then retry"
-    return True, f"all CI checks passed on {where}"
+        return False, f"no CI results yet for head {sha[:8]}; wait for the PR checks to finish, then retry", None
+    return True, f"all CI checks passed on {where}", sha
 
 
 async def _merge_pr(pid: str, pr_number: int) -> None:
     """Gate (open + CI) then merge the proposal's PR; settle proposal status.
     Runs as a background task."""
     try:
-        ok, gate_detail = await _ci_gate(pr_number)
+        ok, gate_detail, head_sha = await _ci_gate(pr_number)
         merged = False
         body = ""
         if not ok:
@@ -581,7 +555,7 @@ async def _merge_pr(pid: str, pr_number: int) -> None:
                 resp = await _client.put(
                     f"{GITHUB_API}/repos/{REPO}/pulls/{pr_number}/merge",
                     headers=_gh_headers(),
-                    json={"merge_method": "merge"},
+                    json={"merge_method": "merge", "sha": head_sha},  # GitHub answers 409 if the head moved after CI passed
                 )
                 merged = resp.is_success
                 body = resp.text[:300]
