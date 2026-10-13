@@ -192,7 +192,7 @@ def _read_json(path: Path, default: Any) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return default
-    except json.JSONDecodeError:
+    except ValueError:  # JSONDecodeError and UnicodeDecodeError (binary garbage)
         # Corrupt file: quarantine it (timestamped so concurrent quarantines
         # never clobber each other) and fall back rather than crash the API.
         jlog("error", "corrupt_json_file", {"path": str(path)})
@@ -675,7 +675,7 @@ def _validate_proposal(payload: ProposalIn) -> list[str]:
     if payload.pr_number is None:
         missing.append("pr_number")
     for f in ("technique", "title", "sigma_yaml", "reasoning", "pr_url", "branch"):
-        if not getattr(payload, f):
+        if not (getattr(payload, f) or "").strip():  # whitespace-only counts as missing
             missing.append(f)
     problems = [f"missing fields: {', '.join(missing)}"] if missing else []
     if payload.pr_number is not None and payload.pr_number < 1:
@@ -687,6 +687,8 @@ def _validate_proposal(payload: ProposalIn) -> list[str]:
     for field, limit in _FIELD_LIMITS.items():
         if len(getattr(payload, field) or "") > limit:
             problems.append(f"{field} exceeds {limit} characters")
+        if "\x00" in (getattr(payload, field) or ""):
+            problems.append(f"{field} contains null bytes")
     return problems
 
 
@@ -698,7 +700,10 @@ def _parse_iso(value: str) -> datetime | None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+    try:
+        return dt.astimezone(timezone.utc)
+    except OverflowError:  # e.g. 0001-01-01T00:00:00+05:00 cannot be shifted to UTC
+        return None
 
 
 def _iso(dt: datetime) -> str:
@@ -743,7 +748,8 @@ async def list_proposals(
         unknown = sorted(wanted - set(STATUSES))
         if unknown:
             raise HTTPException(422, f"unknown status {', '.join(unknown)}; allowed: {', '.join(STATUSES)}")
-        proposals = [p for p in proposals if p.get("status") in wanted]
+        if wanted:  # a bare "," means no filter, not "match nothing"
+            proposals = [p for p in proposals if p.get("status") in wanted]
     needle = (q or "").strip().lower()
     if needle:
         proposals = [
@@ -1022,7 +1028,7 @@ async def _check_tcp(host: str, port: int, timeout: float = 5.0) -> bool:
         writer.close()
         await writer.wait_closed()
         return True
-    except (OSError, asyncio.TimeoutError):
+    except (OSError, asyncio.TimeoutError, ValueError, OverflowError):  # bad host/port never 500s health
         return False
 
 
@@ -1234,10 +1240,22 @@ async def _probe_wazuh_api() -> dict[str, Any]:
 
 
 async def _build_pipeline_health() -> dict[str, Any]:
+    async def _no_probe() -> bool:
+        return False
+
+    # An empty WAZUH_HOST means "not configured": never probe it.
+    wazuh_configured = bool(WAZUH_HOST.strip())
     ci, runners, wazuh_api, wazuh_ok = await asyncio.gather(
-        _probe_ci(), _probe_runners(), _probe_wazuh_api(), _check_tcp(WAZUH_HOST, WAZUH_PORT)
+        _probe_ci(), _probe_runners(), _probe_wazuh_api(),
+        _check_tcp(WAZUH_HOST, WAZUH_PORT) if wazuh_configured else _no_probe(),
     )
     wazuh_detail = f"tcp {WAZUH_HOST}:{WAZUH_PORT} " + ("reachable" if wazuh_ok else "unreachable")
+    if wazuh_configured:
+        wazuh_component = {"name": "Wazuh Manager", "status": "up" if wazuh_ok else "down",
+                           "level": "ok" if wazuh_ok else "bad", "detail": wazuh_detail}
+    else:
+        wazuh_component = {"name": "Wazuh Manager", "status": "unknown", "level": "unknown",
+                           "detail": "not configured (WAZUH_HOST)"}
 
     # Agent link: webhook configured, plus how the most recent trigger went.
     agent_ok = bool(N8N_PROPOSE_WEBHOOK)
@@ -1256,8 +1274,7 @@ async def _build_pipeline_health() -> dict[str, Any]:
         "components": [
             ci,
             runners,
-            {"name": "Wazuh Manager", "status": "up" if wazuh_ok else "down",
-             "level": "ok" if wazuh_ok else "bad", "detail": wazuh_detail},
+            wazuh_component,
             wazuh_api,
             {"name": "Agent Link (n8n)", "status": "up" if agent_ok else "down",
              "level": agent_level, "detail": agent_detail},
@@ -1290,7 +1307,7 @@ async def pipeline_health():
 # Coverage - parse the markdown matrix from the repo (robust pipe-table regex)
 # ---------------------------------------------------------------------------
 _COVERAGE_URL = f"https://raw.githubusercontent.com/{REPO}/main/{COVERAGE_PATH}"
-_SEP_CELL = re.compile(r":?-{2,}:?\s*")
+_SEP_CELL = re.compile(r":?-{2,}:?\s*|:-:?|-:")  # also single-dash alignments (:-: and -:)
 _coverage_cache: dict[str, Any] = {"ts": 0.0, "payload": None}
 _coverage_lock = asyncio.Lock()
 
@@ -1312,7 +1329,7 @@ def _parse_md_table(text: str) -> tuple[list[str], list[list[str]]]:
             continue
         if cells[0].lower() == headers[0].lower():
             continue  # stray repeated header row in body
-        rows.append(cells)
+        rows.append(cells + [""] * (len(headers) - len(cells)))  # ragged row: keep fixed column indexes valid
     return headers or [], rows
 
 
@@ -1477,7 +1494,7 @@ async def trigger_propose():
         response_snippet = resp.text[:300]
         if not ok:
             jlog("warning", "trigger_webhook_bad_response", {"http": resp.status_code})
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, httpx.InvalidURL) as exc:
         ok = False
         detail = f"n8n webhook failed: {exc.__class__.__name__}"
         jlog("warning", "trigger_webhook_failed", {"error": exc.__class__.__name__})
@@ -1521,7 +1538,8 @@ async def trigger_result(tid: str, payload: TriggerResultIn):
         if trig.get("status") != "sent":
             raise HTTPException(409, f"trigger already {trig.get('status')}")
         settled = _settle_trigger(tid, payload.status, detail, payload.proposal_id)
-        _log_activity("agent", f"trigger.{payload.status}", f"{tid}: {detail[:200]}", payload.proposal_id)
+        _log_activity("agent", f"trigger.{payload.status}", f"{tid}: {detail[:200]}",
+                      payload.proposal_id[:64] if payload.proposal_id else None)
     return settled
 
 
