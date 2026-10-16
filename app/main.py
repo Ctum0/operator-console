@@ -162,53 +162,9 @@ def jlog(level: str, event: str, detail: Any = None) -> None:
 # ---------------------------------------------------------------------------
 _file_lock = asyncio.Lock()
 
-SAMPLE_PROPOSALS: list[dict[str, Any]] = [
-    {
-        "id": "prop-a1b2c3d4e5f6",
-        "created_at": "2026-10-01T09:12:00Z",
-        "status": "pending",
-        "technique": "T1078.003",
-        "title": "Local account login outside business hours",
-        "sigma_yaml": (
-            "title: Local account login outside business hours\n"
-            "id: 0f21a4d9-8b1e-4c2a-9f3e-6d7a01b2c3d4\n"
-            "status: experimental\n"
-            "logsource:\n"
-            "  product: windows\n"
-            "  service: security\n"
-            "detection:\n"
-            "  selection:\n"
-            "    EventID: 4624\n"
-            "    LogonType: 10\n"
-            "  filter:\n"
-            "    Computer|startswith: WK-\n"
-            "  condition: selection and not filter\n"
-            "falsepositives:\n"
-            "  - Legitimate after-hours administration\n"
-            "level: medium\n"
-            "tags:\n"
-            "  - attack.lateral_movement\n"
-            "  - attack.t1078.003\n"
-        ),
-        "reasoning": (
-            "RDP-based interactive logons (LogonType 10) arriving outside the "
-            "standard 08:00-18:00 window are a strong privilege-abuse signal for "
-            "this environment; no known scheduled jobs use RDP."
-        ),
-        "pr_url": "https://github.com/Ctum0/detection-platform/pull/12",
-        "pr_number": 12,
-        "branch": "ai/proposal-t1078-003-offhours-rdp",
-    }
-]
-
-SAMPLE_ACTIVITY: list[dict[str, Any]] = [
-    {
-        "ts": "2026-10-01T09:12:05Z",
-        "actor": "agent",
-        "action": "proposal.registered",
-        "detail": "T1078.003 - Local account login outside business hours (PR #12)",
-    }
-]
+# First start begins empty: a seeded fake proposal would point at a real PR number.
+SAMPLE_PROPOSALS: list[dict[str, Any]] = []
+SAMPLE_ACTIVITY: list[dict[str, Any]] = []
 
 SAMPLE_COVERAGE_MD = """\
 # ATT&CK coverage matrix
@@ -236,7 +192,7 @@ def _read_json(path: Path, default: Any) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return default
-    except json.JSONDecodeError:
+    except ValueError:  # JSONDecodeError and UnicodeDecodeError (binary garbage)
         # Corrupt file: quarantine it (timestamped so concurrent quarantines
         # never clobber each other) and fall back rather than crash the API.
         jlog("error", "corrupt_json_file", {"path": str(path)})
@@ -383,6 +339,23 @@ async def _auth(request: Request, call_next):
     return await call_next(request)
 
 
+_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "
+        "base-uri 'none'; form-action 'self'")
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("Content-Security-Policy", _CSP)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
 @app.get("/")
 async def index():
     # no-cache: the browser must revalidate on every load (cheap 304 via the
@@ -516,30 +489,31 @@ async def _ci_bot_parent(sha: str) -> str | None:
     return None
 
 
-async def _ci_gate(pr_number: int) -> tuple[bool, str]:
+async def _ci_gate(pr_number: int) -> tuple[bool, str, str | None]:
     """Verify the PR is OPEN and its head-commit CI has passed.
 
-    Returns (ok, detail). Never raises: network failures surface as ok=False
+    Returns (ok, detail, head_sha); head_sha is the commit that was checked,
+    so the merge can be pinned to exactly what CI approved. Never raises: network failures surface as ok=False
     with a clear reason so the operator can retry the approve later.
     """
     # 1. PR must exist and be open.
     try:
         resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/pulls/{pr_number}")
     except httpx.HTTPError as exc:
-        return False, f"GitHub unreachable while checking PR state: {exc.__class__.__name__}"
+        return False, f"GitHub unreachable while checking PR state: {exc.__class__.__name__}", None
     if resp.status_code == 404:
-        return False, f"PR #{pr_number} not found in {REPO} (HTTP 404)"
+        return False, f"PR #{pr_number} not found in {REPO} (HTTP 404)", None
     if not resp.is_success:
-        return False, f"GitHub PR fetch failed (HTTP {resp.status_code})"
+        return False, f"GitHub PR fetch failed (HTTP {resp.status_code})", None
     prj = resp.json()
     state = prj.get("state")
     if prj.get("merged") or state == "closed":
-        return False, f"PR #{pr_number} is {state} (merged={bool(prj.get('merged'))}), not open"
+        return False, f"PR #{pr_number} is {state} (merged={bool(prj.get('merged'))}), not open", None
     if state != "open":
-        return False, f"PR #{pr_number} is in unexpected state '{state}'"
+        return False, f"PR #{pr_number} is in unexpected state '{state}'", None
     sha = (prj.get("head") or {}).get("sha")
     if not sha:
-        return False, f"PR #{pr_number} head SHA unavailable"
+        return False, f"PR #{pr_number} head SHA unavailable", None
 
     # 2. CI results. Evaluate the head commit; if it carries no CI at all and is
     # the repo CI's own "[skip ci]" bot commit that only touches generated files,
@@ -556,19 +530,19 @@ async def _ci_gate(pr_number: int) -> tuple[bool, str]:
         failures, pending, any_runs = await _commit_ci(evaluated)
     where = f"head {sha[:8]}" if evaluated == sha else f"{evaluated[:8]} (parent of CI bot commit {sha[:8]})"
     if failures:
-        return False, f"CI failed on {where}: {'; '.join(failures[:3])}"
+        return False, f"CI failed on {where}: {'; '.join(failures[:3])}", None
     if pending:
-        return False, f"CI still running on {where}: {'; '.join(pending[:3])}"
+        return False, f"CI still running on {where}: {'; '.join(pending[:3])}", None
     if not any_runs:
-        return False, f"no CI results yet for head {sha[:8]}; wait for the PR checks to finish, then retry"
-    return True, f"all CI checks passed on {where}"
+        return False, f"no CI results yet for head {sha[:8]}; wait for the PR checks to finish, then retry", None
+    return True, f"all CI checks passed on {where}", sha
 
 
 async def _merge_pr(pid: str, pr_number: int) -> None:
     """Gate (open + CI) then merge the proposal's PR; settle proposal status.
     Runs as a background task."""
     try:
-        ok, gate_detail = await _ci_gate(pr_number)
+        ok, gate_detail, head_sha = await _ci_gate(pr_number)
         merged = False
         body = ""
         if not ok:
@@ -581,7 +555,7 @@ async def _merge_pr(pid: str, pr_number: int) -> None:
                 resp = await _client.put(
                     f"{GITHUB_API}/repos/{REPO}/pulls/{pr_number}/merge",
                     headers=_gh_headers(),
-                    json={"merge_method": "merge"},
+                    json={"merge_method": "merge", "sha": head_sha},  # GitHub answers 409 if the head moved after CI passed
                 )
                 merged = resp.is_success
                 body = resp.text[:300]
@@ -701,7 +675,7 @@ def _validate_proposal(payload: ProposalIn) -> list[str]:
     if payload.pr_number is None:
         missing.append("pr_number")
     for f in ("technique", "title", "sigma_yaml", "reasoning", "pr_url", "branch"):
-        if not getattr(payload, f):
+        if not (getattr(payload, f) or "").strip():  # whitespace-only counts as missing
             missing.append(f)
     problems = [f"missing fields: {', '.join(missing)}"] if missing else []
     if payload.pr_number is not None and payload.pr_number < 1:
@@ -713,6 +687,8 @@ def _validate_proposal(payload: ProposalIn) -> list[str]:
     for field, limit in _FIELD_LIMITS.items():
         if len(getattr(payload, field) or "") > limit:
             problems.append(f"{field} exceeds {limit} characters")
+        if "\x00" in (getattr(payload, field) or ""):
+            problems.append(f"{field} contains null bytes")
     return problems
 
 
@@ -724,7 +700,10 @@ def _parse_iso(value: str) -> datetime | None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+    try:
+        return dt.astimezone(timezone.utc)
+    except OverflowError:  # e.g. 0001-01-01T00:00:00+05:00 cannot be shifted to UTC
+        return None
 
 
 def _iso(dt: datetime) -> str:
@@ -769,7 +748,8 @@ async def list_proposals(
         unknown = sorted(wanted - set(STATUSES))
         if unknown:
             raise HTTPException(422, f"unknown status {', '.join(unknown)}; allowed: {', '.join(STATUSES)}")
-        proposals = [p for p in proposals if p.get("status") in wanted]
+        if wanted:  # a bare "," means no filter, not "match nothing"
+            proposals = [p for p in proposals if p.get("status") in wanted]
     needle = (q or "").strip().lower()
     if needle:
         proposals = [
@@ -1048,7 +1028,7 @@ async def _check_tcp(host: str, port: int, timeout: float = 5.0) -> bool:
         writer.close()
         await writer.wait_closed()
         return True
-    except (OSError, asyncio.TimeoutError):
+    except (OSError, asyncio.TimeoutError, ValueError, OverflowError):  # bad host/port never 500s health
         return False
 
 
@@ -1260,10 +1240,22 @@ async def _probe_wazuh_api() -> dict[str, Any]:
 
 
 async def _build_pipeline_health() -> dict[str, Any]:
+    async def _no_probe() -> bool:
+        return False
+
+    # An empty WAZUH_HOST means "not configured": never probe it.
+    wazuh_configured = bool(WAZUH_HOST.strip())
     ci, runners, wazuh_api, wazuh_ok = await asyncio.gather(
-        _probe_ci(), _probe_runners(), _probe_wazuh_api(), _check_tcp(WAZUH_HOST, WAZUH_PORT)
+        _probe_ci(), _probe_runners(), _probe_wazuh_api(),
+        _check_tcp(WAZUH_HOST, WAZUH_PORT) if wazuh_configured else _no_probe(),
     )
     wazuh_detail = f"tcp {WAZUH_HOST}:{WAZUH_PORT} " + ("reachable" if wazuh_ok else "unreachable")
+    if wazuh_configured:
+        wazuh_component = {"name": "Wazuh Manager", "status": "up" if wazuh_ok else "down",
+                           "level": "ok" if wazuh_ok else "bad", "detail": wazuh_detail}
+    else:
+        wazuh_component = {"name": "Wazuh Manager", "status": "unknown", "level": "unknown",
+                           "detail": "not configured (WAZUH_HOST)"}
 
     # Agent link: webhook configured, plus how the most recent trigger went.
     agent_ok = bool(N8N_PROPOSE_WEBHOOK)
@@ -1282,8 +1274,7 @@ async def _build_pipeline_health() -> dict[str, Any]:
         "components": [
             ci,
             runners,
-            {"name": "Wazuh Manager", "status": "up" if wazuh_ok else "down",
-             "level": "ok" if wazuh_ok else "bad", "detail": wazuh_detail},
+            wazuh_component,
             wazuh_api,
             {"name": "Agent Link (n8n)", "status": "up" if agent_ok else "down",
              "level": agent_level, "detail": agent_detail},
@@ -1316,7 +1307,7 @@ async def pipeline_health():
 # Coverage - parse the markdown matrix from the repo (robust pipe-table regex)
 # ---------------------------------------------------------------------------
 _COVERAGE_URL = f"https://raw.githubusercontent.com/{REPO}/main/{COVERAGE_PATH}"
-_SEP_CELL = re.compile(r":?-{2,}:?\s*")
+_SEP_CELL = re.compile(r":?-{2,}:?\s*|:-:?|-:")  # also single-dash alignments (:-: and -:)
 _coverage_cache: dict[str, Any] = {"ts": 0.0, "payload": None}
 _coverage_lock = asyncio.Lock()
 
@@ -1338,7 +1329,7 @@ def _parse_md_table(text: str) -> tuple[list[str], list[list[str]]]:
             continue
         if cells[0].lower() == headers[0].lower():
             continue  # stray repeated header row in body
-        rows.append(cells)
+        rows.append(cells + [""] * (len(headers) - len(cells)))  # ragged row: keep fixed column indexes valid
     return headers or [], rows
 
 
@@ -1503,7 +1494,7 @@ async def trigger_propose():
         response_snippet = resp.text[:300]
         if not ok:
             jlog("warning", "trigger_webhook_bad_response", {"http": resp.status_code})
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, httpx.InvalidURL) as exc:
         ok = False
         detail = f"n8n webhook failed: {exc.__class__.__name__}"
         jlog("warning", "trigger_webhook_failed", {"error": exc.__class__.__name__})
@@ -1547,7 +1538,8 @@ async def trigger_result(tid: str, payload: TriggerResultIn):
         if trig.get("status") != "sent":
             raise HTTPException(409, f"trigger already {trig.get('status')}")
         settled = _settle_trigger(tid, payload.status, detail, payload.proposal_id)
-        _log_activity("agent", f"trigger.{payload.status}", f"{tid}: {detail[:200]}", payload.proposal_id)
+        _log_activity("agent", f"trigger.{payload.status}", f"{tid}: {detail[:200]}",
+                      payload.proposal_id[:64] if payload.proposal_id else None)
     return settled
 
 

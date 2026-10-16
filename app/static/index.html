@@ -527,6 +527,10 @@ html.locked .gate[hidden] { display:grid !important; }
   .search kbd { display:none; }
   .d-head { flex-direction:column; gap:6px; }
   .legend { display:none; }
+  /* Overview decision rows: chip, status and age on one line, the title gets its own full-width lines */
+  .prow { flex-wrap:wrap; gap:6px 10px; }
+  .prow .age { margin-left:auto; }
+  .prow .title { order:3; flex:1 1 100%; white-space:normal; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
@@ -994,12 +998,16 @@ function renderChart() {
   const all = buckets.map((b, i) => [x(i), y(b.total)]);
   const prop = buckets.map((b, i) => [x(i), y(b.proposals)]);
   const grid = []; for (let v = 0; v <= ymax; v += step) grid.push(v);
-  const labelEvery = Math.ceil(days / 7);
+  // Label from the newest day backwards, keeping at least ~64px between labels so
+  // the last two dates can never collide (a label is ~40px wide).
+  const pxPerDay = days === 1 ? W : (W - pl - pr) / (days - 1);
+  const labelEvery = Math.max(1, Math.ceil(64 / pxPerDay));
+  const labelAt = i => (days - 1 - i) % labelEvery === 0;
   const fmtD = d => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Pipeline events per day over the last ${days} days">
     <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7cf6" stop-opacity=".36"/><stop offset="1" stop-color="#8b7cf6" stop-opacity="0"/></linearGradient></defs>
     ${grid.map(v => `<line class="grid" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${pl - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
-    ${buckets.map((b, i) => (i % labelEvery === 0 || i === days - 1) ? `<text class="axis" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === days - 1 ? 'end' : 'middle'}">${fmtD(b.d)}</text>` : '').join('')}
+    ${buckets.map((b, i) => labelAt(i) ? `<text class="axis" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === days - 1 ? 'end' : 'middle'}">${fmtD(b.d)}</text>` : '').join('')}
     <path d="${smooth(all)}L${x(days - 1)},${base}L${x(0)},${base}Z" fill="url(#gArea)"/>
     <path d="${smooth(all)}" fill="none" stroke="#8b7cf6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="${smooth(prop)}" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4 4" opacity=".85"/>
