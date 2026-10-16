@@ -5,7 +5,7 @@ services:
       context: .
       args:
         GIT_SHA: ${GIT_SHA:-}
-    image: operator-console:latest
+    image: ghcr.io/ctum0/operator-console:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
