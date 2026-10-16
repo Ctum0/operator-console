@@ -10,10 +10,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: |
+            ghcr.io/ctum0/operator-console:latest
+            ghcr.io/ctum0/operator-console:${{ github.sha }}
+
   deploy:
+    needs: image
     runs-on: ubuntu-latest
     steps:
-      - name: Restart the service on Coolify (rebuilds from main)
+      - name: Redeploy the service on Coolify (pulls the new image)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
@@ -41,7 +63,7 @@ jobs:
       - name: Wait for the console to come back healthy
         run: |
           set -uo pipefail
-          sleep 180
+          sleep 60
           for i in $(seq 1 30); do
             if curl -fsS -m 10 https://console.ctum.org/healthz >/dev/null; then
               echo "console healthy"; exit 0

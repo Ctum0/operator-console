@@ -75,11 +75,28 @@ Secrets come from the environment only and are never written to logs.
   is unset. Leave Advanced → "Include Source Commit in Build" off: it only adds the
   SHA at build time and invalidates the Docker build cache on every commit.
 
+### Image-based deploys
+
+Pushes to `main` build the image in GitHub Actions and publish it to
+`ghcr.io/ctum0/operator-console` (tags `latest` and the commit SHA); the
+workflow then calls Coolify. One-time setup:
+
+1. After the first run, open the package in GitHub (Packages) and set its
+   visibility to public, or give Coolify a registry login.
+2. In Coolify, change the service's compose `image:` to
+   `ghcr.io/ctum0/operator-console:latest`, drop the `build:` block and add
+   `pull_policy: always`, so every restart or redeploy fetches the new image.
+3. In Cloudflare, add a WAF custom rule that skips bot checks for
+   `coolify.ctum.org/api/v1/*` and `console.ctum.org/healthz`; otherwise the
+   workflow stops with "Blocked by Cloudflare's bot challenge".
+
+Rollback: set the compose `image:` to an earlier commit-SHA tag and redeploy.
+
 ## Storage (`/data` volume)
 
 | File | Contents |
 | --- | --- |
-| `proposals.json` | Proposals with notes and validation evidence. Created with one sample entry on first boot |
+| `proposals.json` | Proposals with notes and validation evidence. Starts empty on a fresh install |
 | `activity.json` | Append-only audit log, capped at 2000 entries |
 | `triggers.json` | Proposal-cycle trigger records, last 200 |
 | `ratelimit.json` | Registration rate limiter, so a restart does not reset it |
