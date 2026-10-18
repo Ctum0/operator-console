@@ -1,0 +1,330 @@
+"""Multi-backend query generator for Operator Console.
+
+Translates Sigma rule YAML definitions into multiple target SIEM/query dialects:
+1. Splunk SPL
+2. Microsoft Sentinel KQL
+3. Elasticsearch Lucene & EQL
+4. Wazuh XML
+"""
+
+from __future__ import annotations
+
+import re
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
+from typing import Any
+
+import yaml
+
+try:
+    from sigma.rule import SigmaRule
+    from sigma.backends.splunk import SplunkBackend
+    from sigma.backends.kusto import KustoBackend
+    from sigma.backends.elasticsearch import LuceneBackend
+    _HAVE_PYSIGMA = True
+except ImportError:
+    _HAVE_PYSIGMA = False
+
+
+# Field mapping for Wazuh Sysmon / Windows EventChannel
+_FIELD_MAP = {
+    "Image": "win.eventdata.image",
+    "CommandLine": "win.eventdata.commandLine",
+    "ParentImage": "win.eventdata.parentImage",
+    "TargetImage": "win.eventdata.targetImage",
+    "SourceImage": "win.eventdata.sourceImage",
+    "GrantedAccess": "win.eventdata.grantedAccess",
+    "TargetFilename": "win.eventdata.targetFilename",
+    "ImagePath": "win.eventdata.imagePath",
+    "ServiceName": "win.eventdata.serviceName",
+    "ServiceFileName": "win.eventdata.serviceFileName",
+    "TargetObject": "win.eventdata.targetObject",
+    "Details": "win.eventdata.details",
+    "NewProcessName": "win.eventdata.newProcessName",
+    "ParentProcessName": "win.eventdata.parentProcessName",
+    "ProcessCommandLine": "win.eventdata.commandLine",
+    "EventID": "win.system.eventID",
+}
+
+_SYSMON_PARENTS = {
+    1: {"sid": "61603", "group": "sysmon_process_creation"},
+    10: {"sid": "61612", "group": "sysmon_process_access"},
+    11: {"sid": "61613", "group": "sysmon_file_create"},
+    12: {"sid": "61614", "group": "sysmon_registry_event"},
+    13: {"sid": "61615", "group": "sysmon_registry_event"},
+    14: {"sid": "61616", "group": "sysmon_registry_event"},
+}
+
+_SYSMON_CATEGORIES = {
+    "process_creation": 1,
+    "process_access": 10,
+    "file_event": 11,
+    "registry_add": 12,
+    "registry_delete": 12,
+    "registry_set": 13,
+    "registry_rename": 14,
+}
+
+
+def _pcre2_alt(values: list[str]) -> str:
+    escaped = [re.escape(str(v)).replace("/", "\\/") for v in values]
+    return "(" + "|".join(escaped) + ")" if len(escaped) > 1 else (escaped[0] if escaped else "")
+
+
+def convert_to_wazuh_xml(doc: dict[str, Any], rule_id: int = 100099, level: int = 8) -> str:
+    """Translate parsed Sigma doc into a standalone Wazuh custom rule XML block."""
+    logsource = doc.get("logsource", {})
+    detection = doc.get("detection", {})
+    category = str(logsource.get("category", "")).lower()
+    service = str(logsource.get("service", "")).lower()
+
+    root = ET.Element("group", name="custom_rules,")
+    rule_el = ET.SubElement(root, "rule", id=str(rule_id), level=str(level))
+
+    # Parent anchor
+    if category in _SYSMON_CATEGORIES:
+        eid = _SYSMON_CATEGORIES[category]
+        parent = _SYSMON_PARENTS.get(eid, {"sid": "61603", "group": "sysmon_process_creation"})
+        anchor_el = ET.SubElement(rule_el, "if_group")
+        anchor_el.text = parent["group"]
+    elif service in ("security", "system"):
+        channel = "Security" if service == "security" else "System"
+        f = ET.SubElement(rule_el, "field", name="win.system.channel")
+        f.text = f"^{channel}$"
+        f.set("type", "pcre2")
+        grp = ET.SubElement(rule_el, "group")
+        grp.text = "windows_security," if service == "security" else "windows_system,"
+    elif service in ("sshd", "auth"):
+        anchor_el = ET.SubElement(rule_el, "if_group")
+        anchor_el.text = "sshd"
+
+    # Field selections
+    for name, sel in detection.items():
+        if name == "condition" or not isinstance(sel, dict):
+            continue
+        for key, val in sel.items():
+            field_name = key.split("|")[0]
+            op = key.split("|")[1] if "|" in key else "exact"
+            wazuh_field = _FIELD_MAP.get(field_name, f"win.eventdata.{field_name.lower()}")
+            
+            f_el = ET.SubElement(rule_el, "field", name=wazuh_field)
+            f_el.set("type", "pcre2")
+
+            val_list = val if isinstance(val, list) else [val]
+            if op == "contains":
+                f_el.text = "(?i).*" + _pcre2_alt(val_list) + ".*"
+            elif op == "endswith":
+                f_el.text = "(?i).*" + _pcre2_alt(val_list) + "$"
+            elif op == "startswith":
+                f_el.text = "(?i)^" + _pcre2_alt(val_list) + ".*"
+            else:
+                f_el.text = "^" + _pcre2_alt(val_list) + "$"
+
+    # MITRE ATT&CK block
+    tags = doc.get("tags") or []
+    mitre_techniques = []
+    for t in tags:
+        s = str(t).strip().lower()
+        if s.startswith("attack.t"):
+            mitre_techniques.append(s[len("attack."):].upper())
+    
+    if mitre_techniques:
+        mitre_el = ET.SubElement(rule_el, "mitre")
+        for tech in mitre_techniques:
+            id_el = ET.SubElement(mitre_el, "id")
+            id_el.text = tech
+
+    desc = ET.SubElement(rule_el, "description")
+    desc.text = str(doc.get("title", "Custom Sigma Detection Rule"))
+
+    xml_raw = ET.tostring(root, encoding="utf-8")
+    dom = minidom.parseString(xml_raw)
+    pretty = dom.toprettyxml(indent="  ")
+    # Clean up empty lines and XML header
+    lines = [line for line in pretty.splitlines() if line.strip() and not line.startswith("<?xml")]
+    return "\n".join(lines)
+
+
+def translate_sigma_rule(raw_yaml: str) -> dict[str, Any]:
+    """Translate raw Sigma YAML into Splunk SPL, Sentinel KQL, Lucene, and Wazuh XML."""
+    if not (raw_yaml or "").strip():
+        return {
+            "valid": False,
+            "error": "Sigma YAML content is empty",
+            "queries": {},
+        }
+
+    try:
+        docs = list(yaml.safe_load_all(raw_yaml))
+        if not docs or not isinstance(docs[0], dict):
+            return {"valid": False, "error": "No valid YAML document found", "queries": {}}
+        parsed = docs[0]
+    except Exception as exc:
+        return {"valid": False, "error": f"YAML parsing failed: {exc}", "queries": {}}
+
+    queries: dict[str, str] = {}
+    backends_available: list[str] = []
+
+    # 1. Wazuh XML
+    try:
+        queries["wazuh"] = convert_to_wazuh_xml(parsed)
+        backends_available.append("wazuh")
+    except Exception as exc:
+        queries["wazuh"] = f"<!-- Wazuh translation error: {exc} -->"
+
+    # 2. pySigma Backends (Splunk, KQL, Lucene)
+    if _HAVE_PYSIGMA:
+        try:
+            rule = SigmaRule.from_yaml(raw_yaml)
+
+            # Splunk SPL
+            try:
+                splunk_res = SplunkBackend().convert_rule(rule)
+                queries["splunk"] = "\n".join(splunk_res) if splunk_res else ""
+                backends_available.append("splunk")
+            except Exception as e:
+                queries["splunk"] = f"# Splunk translation error: {e}"
+
+            # Microsoft Sentinel KQL
+            try:
+                kusto_res = KustoBackend().convert_rule(rule)
+                queries["kql"] = "\n".join(kusto_res) if kusto_res else ""
+                backends_available.append("kql")
+            except Exception as e:
+                queries["kql"] = f"// Microsoft Sentinel KQL error: {e}"
+
+            # Elasticsearch Lucene
+            try:
+                lucene_res = LuceneBackend().convert_rule(rule)
+                queries["lucene"] = "\n".join(lucene_res) if lucene_res else ""
+                backends_available.append("lucene")
+            except Exception as e:
+                queries["lucene"] = f"# Elasticsearch Lucene error: {e}"
+
+        except Exception as exc:
+            for b in ("splunk", "kql", "lucene"):
+                if b not in queries:
+                    queries[b] = f"Translation error: {exc}"
+
+    return {
+        "valid": True,
+        "title": parsed.get("title", ""),
+        "technique": (parsed.get("tags") or ["T1000"])[0],
+        "logsource": parsed.get("logsource", {}),
+        "queries": queries,
+        "backends": backends_available,
+    }
+
+
+PRESET_RULES: dict[str, dict[str, str]] = {
+    "t1547-001": {
+        "id": "t1547-001",
+        "title": "Registry Run Key Persistence via SetValue",
+        "technique": "T1547.001",
+        "slug": "registry_run_key_persistence",
+        "yaml": """title: Registry Run Key Persistence via SetValue
+id: b34a2e8c-8f20-4e3a-96bf-9c7b89d41234
+status: test
+description: Detects persistence mechanisms using Run or RunOnce keys
+author: Sithum (Ctum0)
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection:
+    TargetObject|contains:
+      - '\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - '\\Microsoft\\Windows\\CurrentVersion\\RunOnce'
+      - '\\Microsoft\\Windows\\CurrentVersion\\RunServices'
+  filter:
+    Image|endswith:
+      - '\\Windows\\System32\\msiexec.exe'
+      - '\\Windows\\SysWOW64\\msiexec.exe'
+  condition: selection and not filter
+tags:
+  - attack.persistence
+  - attack.t1547.001
+level: high
+"""
+    },
+    "t1003-001": {
+        "id": "t1003-001",
+        "title": "Windows Credential Dumping via LSASS Access",
+        "technique": "T1003.001",
+        "slug": "lsass_credential_dumping",
+        "yaml": """title: Windows Credential Dumping via LSASS Access
+id: a12b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+status: test
+description: Detects process access to LSASS for credential dumping
+author: Sithum (Ctum0)
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection:
+    TargetImage|endswith: '\\lsass.exe'
+    GrantedAccess:
+      - '0x1010'
+      - '0x1038'
+      - '0x1fffff'
+  condition: selection
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+level: high
+"""
+    },
+    "t1053-005": {
+        "id": "t1053-005",
+        "title": "Scheduled Task Creation via Security Log",
+        "technique": "T1053.005",
+        "slug": "scheduled_task_creation",
+        "yaml": """title: Scheduled Task Creation
+id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+status: test
+description: Detects scheduled task creation via EventID 4698
+author: Sithum (Ctum0)
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4698
+  condition: selection
+tags:
+  - attack.execution
+  - attack.persistence
+  - attack.t1053.005
+level: medium
+"""
+    },
+    "t1059-001": {
+        "id": "t1059-001",
+        "title": "Suspicious PowerShell Download Cradle",
+        "technique": "T1059.001",
+        "slug": "powershell_download_cradle",
+        "yaml": """title: Suspicious PowerShell Download Cradle
+id: d7e8f9a0-1b2c-3d4e-5f6a-7b8c9d0e1f2a
+status: test
+description: Detects PowerShell executing inline download cradles (Net.WebClient, DownloadString)
+author: Sithum (Ctum0)
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith:
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+    CommandLine|contains:
+      - 'Net.WebClient'
+      - 'DownloadString'
+      - 'DownloadFile'
+  condition: selection
+tags:
+  - attack.execution
+  - attack.t1059.001
+level: high
+"""
+    }
+}

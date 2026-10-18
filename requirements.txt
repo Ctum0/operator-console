@@ -3,3 +3,7 @@ uvicorn==0.32.0
 httpx==0.27.2
 pydantic>=2.9,<3
 pyyaml>=6.0
+pySigma>=1.5.0
+pysigma-backend-splunk>=2.1.0
+pysigma-backend-kusto>=1.0.0
+pysigma-backend-elasticsearch>=2.1.0

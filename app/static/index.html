@@ -18,37 +18,37 @@
 <style>
 /* ================= TOKENS ================= */
 :root {
-  --bg: #0b0b12;
-  --side: #09090e;
-  --panel: #111119;
-  --elev: #181822;
-  --hover: rgba(255,255,255,0.035);
-  --border: rgba(255,255,255,0.06);
-  --border-2: rgba(255,255,255,0.09);
-  --border-3: rgba(255,255,255,0.16);
-  --ink: #f4f4f8;
-  --ink-2: #c8c9d6;
-  --ink-3: #9294a8;
-  --ink-4: #7d7f93;      /* 4.5:1 on bg, side and panel */
-  --accent: #8b7cf6;
-  --accent-text: #a99df9;
-  --accent-btn: #6656e0; /* white text 5.3:1 */
-  --accent-btn-hover: #6d5de6;
-  --accent-dim: rgba(139,124,246,0.13);
-  --accent-line: rgba(139,124,246,0.32);
-  --ok: #34d399;
-  --warn: #f5b942;
-  --bad: #f87171;
-  --pending: #9294a8;
-  --ok-dim: rgba(52,211,153,0.10);
-  --warn-dim: rgba(245,185,66,0.10);
-  --bad-dim: rgba(248,113,113,0.10);
+  --bg: #07080c;
+  --side: #050609;
+  --panel: #0d0f17;
+  --elev: #131622;
+  --hover: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.07);
+  --border-2: rgba(255,255,255,0.12);
+  --border-3: rgba(255,255,255,0.20);
+  --ink: #f8fafc;
+  --ink-2: #cbd5e1;
+  --ink-3: #94a3b8;
+  --ink-4: #64748b;
+  --accent: #6366f1;
+  --accent-text: #818cf8;
+  --accent-btn: #4f46e5;
+  --accent-btn-hover: #4338ca;
+  --accent-dim: rgba(99,102,241,0.12);
+  --accent-line: rgba(99,102,241,0.32);
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --pending: #94a3b8;
+  --ok-dim: rgba(16,185,129,0.12);
+  --warn-dim: rgba(245,158,11,0.12);
+  --bad-dim: rgba(239,68,68,0.12);
   --r-lg: 12px;
   --r: 8px;
   --r-sm: 6px;
-  --side-w: 248px;
-  --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --side-w: 256px;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, sans-serif;
   --ease: cubic-bezier(.16,1,.3,1);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -470,6 +470,51 @@ table.t tr.cov-detail:hover { background: transparent; }
 html.locked .app { visibility:hidden; }
 html.locked .gate[hidden] { display:grid !important; }
 
+/* ================= STUDIO & SIMULATION ================= */
+.studio-grid { display:grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1.15fr); gap:20px; align-items:stretch; }
+.studio-pane { display:flex; flex-direction:column; min-height:640px; padding:0; overflow:hidden; }
+.studio-pane-head { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border); background:rgba(255,255,255,0.015); }
+.presets-bar { display:flex; align-items:center; gap:8px; padding:10px 18px; background:var(--bg); border-bottom:1px solid var(--border); overflow-x:auto; }
+.presets-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-4); white-space:nowrap; }
+.chip-btn {
+  font-family:var(--sans); font-size:11.5px; font-weight:500; padding:4px 12px; border-radius:999px;
+  background:var(--elev); border:1px solid var(--border-2); color:var(--ink-2); cursor:pointer; white-space:nowrap;
+  transition:all .15s ease;
+}
+.chip-btn:hover { background:var(--accent-dim); border-color:var(--accent-line); color:var(--accent-text); }
+.studio-editor {
+  flex:1; border:none; border-radius:0; padding:16px 18px; resize:none; font-size:12.5px; line-height:1.55;
+  background:transparent; color:var(--ink); font-family:var(--mono);
+}
+.studio-editor:focus { outline:none; }
+.studio-controls { display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-top:1px solid var(--border); background:rgba(255,255,255,0.015); }
+.studio-tabs { display:flex; gap:4px; }
+.studio-tab {
+  font-family:var(--sans); font-size:12px; font-weight:550; padding:6px 12px; border-radius:var(--r-sm);
+  background:transparent; border:1px solid transparent; color:var(--ink-3); cursor:pointer; transition:all .15s ease;
+}
+.studio-tab:hover { color:var(--ink); background:var(--hover); }
+.studio-tab.active { background:var(--elev); border-color:var(--border-2); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+.studio-query-container { flex:1; padding:16px 18px; overflow-y:auto; background:var(--bg); }
+.studio-query-output { margin:0; font-family:var(--mono); font-size:12.5px; line-height:1.6; color:var(--ink); white-space:pre-wrap; word-break:break-word; }
+.studio-meta-footer { display:flex; gap:20px; padding:10px 18px; border-top:1px solid var(--border); background:var(--panel); font-size:11.5px; color:var(--ink-3); flex-wrap:wrap; }
+.meta-item b { color:var(--ink-2); font-weight:600; margin-left:4px; }
+
+/* Modal */
+.modal-backdrop { position:fixed; inset:0; z-index:90; background:rgba(0,0,0,0.78); backdrop-filter:blur(6px); display:grid; place-items:center; padding:16px; animation:toast-in .2s var(--ease); }
+.modal-card { width:100%; max-width:660px; background:var(--panel); border:1px solid var(--border-3); border-radius:var(--r-lg); box-shadow:0 30px 80px rgba(0,0,0,0.7); overflow:hidden; }
+.modal-header { display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid var(--border); background:rgba(255,255,255,0.02); }
+.modal-body { padding:22px; max-height:80vh; overflow-y:auto; }
+.pulse-icon { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, rgba(99,102,241,0.2), rgba(16,185,129,0.2)); border:1px solid var(--accent-line); display:grid; place-items:center; color:var(--accent-text); flex:none; }
+.sim-alert-banner { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:var(--r); background:var(--ok-dim); border:1px solid rgba(16,185,129,0.3); margin-bottom:16px; }
+.sim-alert-banner b { color:var(--ok); font-size:13.5px; }
+.codebox { background:var(--bg); border:1px solid var(--border-2); border-radius:var(--r); padding:14px; overflow-x:auto; }
+
+/* Pulse animation */
+.dot.pulse { position:relative; }
+.dot.pulse::after { content:''; position:absolute; inset:-3px; border-radius:50%; background:inherit; opacity:0.6; animation:ping 2s cubic-bezier(0,0,0.2,1) infinite; }
+@keyframes ping { 75%, 100% { transform:scale(2.4); opacity:0; } }
+
 /* ================= RESPONSIVE ================= */
 @media (max-width: 1280px) {
   .page { padding: 28px 28px 40px; }
@@ -511,6 +556,8 @@ html.locked .gate[hidden] { display:grid !important; }
   .qdetail-foot .btn:first-of-type { margin-left:auto; }
   .stats { grid-template-columns: minmax(0,1fr); }
   .hgrid { grid-template-columns: minmax(0,1fr); }
+  .studio-grid { grid-template-columns: minmax(0,1fr); }
+  .studio-pane { min-height:480px; }
   .toasts { left:16px; right:16px; bottom:16px; align-items:stretch; }
   .toast { max-width:none; }
 }
@@ -555,6 +602,7 @@ html.locked .gate[hidden] { display:grid !important; }
         <div class="nav-label">Operations</div>
         <a href="#/overview" data-nav="overview"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="6" rx="1.2"/><rect x="9" y="2" width="5" height="4" rx="1.2"/><rect x="9" y="8" width="5" height="6" rx="1.2"/><rect x="2" y="10" width="5" height="4" rx="1.2"/></svg>Overview</a>
         <a href="#/queue" data-nav="queue"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2-6h8l2 6v4H2z"/><path d="M2 9.5h3.5l1 1.5h3l1-1.5H14"/></svg>Review queue<span class="count" id="navCount" hidden></span></a>
+        <a href="#/studio" data-nav="studio"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.5 1.5l-5 7h4l-1.5 6 6.5-8h-4z"/></svg>Query Studio</a>
         <a href="#/submit" data-nav="submit"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v11M2.5 8h11"/></svg>Submit rule</a>
         <a href="#/coverage" data-nav="coverage"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r=".7"/></svg>Coverage</a>
         <a href="#/runs" data-nav="runs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9h.01M10 9h.01M1.5 8.5v2M14.5 8.5v2"/></svg>Agent runs</a>
@@ -704,6 +752,82 @@ html.locked .gate[hidden] { display:grid !important; }
       <div class="hgrid" id="healthGrid"><div class="card hcard"><div class="skel skel-line"></div><div class="skel skel-line"></div></div></div>
     </section>
 
+    <!-- QUERY STUDIO -->
+    <section class="page view" data-view="studio" aria-labelledby="tStudio" hidden>
+      <div class="page-head">
+        <div><h1 id="tStudio">Multi-Backend Query Studio</h1><p>Author or select any Sigma rule to instantly generate Splunk SPL, Microsoft Sentinel KQL, Elasticsearch Lucene/EQL, and Wazuh XML detection queries.</p></div>
+        <div class="actions">
+          <button class="btn btn-primary" type="button" id="studioSubmitBtn"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2-6h8l2 6v4H2z"/><path d="M8 3.5v9M3.5 8h9"/></svg>Submit to Review Queue</button>
+        </div>
+      </div>
+
+      <div class="studio-grid">
+        <!-- Left: Sigma Source & Presets -->
+        <div class="card studio-pane">
+          <div class="studio-pane-head">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="pill accent">INPUT</span>
+              <h2 style="font-size:13.5px; font-weight:600; color:var(--ink);">Sigma Rule (YAML)</h2>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;" title="Upload a .yml file">
+                <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 12V3M4 6.5 8 2.5l4 4M2 13.5h12"/></svg>
+                <span>Upload</span>
+                <input type="file" id="studioFile" accept=".yml,.yaml" style="display:none">
+              </label>
+            </div>
+          </div>
+
+          <!-- Presets bar -->
+          <div class="presets-bar" id="studioPresets">
+            <span class="presets-label">Presets:</span>
+            <button class="chip-btn" type="button" data-preset="t1547-001">Run Key (T1547.001)</button>
+            <button class="chip-btn" type="button" data-preset="t1003-001">LSASS Dump (T1003.001)</button>
+            <button class="chip-btn" type="button" data-preset="t1053-005">Scheduled Task (T1053.005)</button>
+            <button class="chip-btn" type="button" data-preset="t1059-001">PowerShell Cradle (T1059.001)</button>
+          </div>
+
+          <textarea class="input mono studio-editor" id="studioYaml" placeholder="title: Suspicious Process Creation..."></textarea>
+
+          <div class="studio-controls">
+            <button class="btn btn-primary" type="button" id="studioTranslateBtn">
+              <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.5 1.5l-5 7h4l-1.5 6 6.5-8h-4z"/></svg>
+              Generate Multi-Backend Queries
+            </button>
+            <span class="hint" id="studioStatus">Real-time compilation</span>
+          </div>
+        </div>
+
+        <!-- Right: Generated Queries -->
+        <div class="card studio-pane">
+          <div class="studio-pane-head">
+            <div class="studio-tabs" id="studioTabs" role="tablist">
+              <button class="studio-tab active" data-tab="splunk" role="tab" type="button">Splunk SPL</button>
+              <button class="studio-tab" data-tab="kql" role="tab" type="button">Sentinel KQL</button>
+              <button class="studio-tab" data-tab="lucene" role="tab" type="button">Elasticsearch</button>
+              <button class="studio-tab" data-tab="wazuh" role="tab" type="button">Wazuh XML</button>
+            </div>
+            <div class="actions">
+              <button class="btn btn-ghost btn-sm" id="studioCopyBtn" type="button" title="Copy query to clipboard">
+                <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="studio-query-container">
+            <pre class="studio-query-output mono" id="studioQueryOutput"><code>// Select a preset or enter a Sigma rule and click "Generate Multi-Backend Queries"</code></pre>
+          </div>
+
+          <div class="studio-meta-footer" id="studioMeta">
+            <div class="meta-item"><span>Target SIEM:</span> <b id="metaSIEM">Splunk SPL (Enterprise & Cloud)</b></div>
+            <div class="meta-item"><span>Technique:</span> <b id="metaTech">–</b></div>
+            <div class="meta-item"><span>Logsource:</span> <b id="metaLogsource">–</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- SUBMIT RULE -->
     <section class="page view" data-view="submit" aria-labelledby="tSubmit" hidden>
       <div class="page-head">
@@ -753,6 +877,25 @@ html.locked .gate[hidden] { display:grid !important; }
 <div class="scrim" id="scrim"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
+<!-- SIMULATION MODAL -->
+<div class="modal-backdrop" id="simModal" hidden>
+  <div class="modal-card">
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="pulse-icon"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.5 1.5l-5 7h4l-1.5 6 6.5-8h-4z"/></svg></div>
+        <div>
+          <h2 style="font-size:16px; font-weight:650; color:var(--ink);">Live Alert Simulation (Victimless Demo)</h2>
+          <p style="font-size:12.5px; color:var(--ink-3);">Telemetry replayed against Wazuh detection engine without requiring live Proxmox victim VMs.</p>
+        </div>
+      </div>
+      <button class="icon-btn" id="simCloseBtn" type="button" aria-label="Close modal">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="simModalBody"></div>
+  </div>
+</div>
+
 <div class="gate" id="gate" hidden>
   <form class="gate-card" id="gateForm">
     <div class="brand">
@@ -772,7 +915,7 @@ html.locked .gate[hidden] { display:grid !important; }
 'use strict';
 /* ================= state ================= */
 const POLL_MS = 15000, FAST_POLL_MS = 2500;
-const VIEWS = ['overview', 'queue', 'submit', 'coverage', 'runs', 'activity', 'health'];
+const VIEWS = ['overview', 'queue', 'studio', 'submit', 'coverage', 'runs', 'activity', 'health'];
 const TABS = [
   ['action', 'Needs action', ['pending', 'merge_failed', 'merging']],
   ['all', 'All', null],
@@ -930,7 +1073,7 @@ function parseHash() {
   return { view, sel: view === 'queue' && parts[1] ? decodeURIComponent(parts[1]) : null };
 }
 function go(view, sel) { location.hash = '#/' + view + (sel ? '/' + encodeURIComponent(sel) : ''); }
-const TITLES = { overview: 'Overview', queue: 'Review queue', submit: 'Submit rule', coverage: 'Coverage', runs: 'Agent runs', activity: 'Activity', health: 'Pipeline health' };
+const TITLES = { overview: 'Overview', queue: 'Review queue', studio: 'Query Studio', submit: 'Submit rule', coverage: 'Coverage', runs: 'Agent runs', activity: 'Activity', health: 'Pipeline health' };
 function backLabel() {
   const prev = (S.prevRoute || '').replace(/^#\/?/, '').split('/')[0];
   return prev && prev !== 'queue' && TITLES[prev] ? 'Back to ' + TITLES[prev] : 'All proposals';
@@ -954,7 +1097,7 @@ window.addEventListener('hashchange', applyRoute);
 
 function renderView() {
   if (!S.booted) return;
-  ({ overview: renderOverview, queue: renderQueue, submit: renderSubmitView, coverage: renderCoverage, runs: renderRuns, activity: renderActivity, health: renderHealthView })[S.view]();
+  ({ overview: renderOverview, queue: renderQueue, studio: renderStudio, submit: renderSubmitView, coverage: renderCoverage, runs: renderRuns, activity: renderActivity, health: renderHealthView })[S.view]();
 }
 function renderShell() {
   const c = S.counts, need = (c.pending || 0) + (c.merge_failed || 0);
@@ -1167,6 +1310,17 @@ async function loadArtifacts(id) {
   if (S.artCache[id]) return;
   try {
     const data = await api('GET', `/api/proposals/${encodeURIComponent(id)}/artifacts`);
+    const p = findP(id);
+    if (p && p.sigma_yaml) {
+      try {
+        const trans = await api('POST', '/api/rules/translate', { sigma_yaml: p.sigma_yaml });
+        if (trans && trans.valid && trans.queries) {
+          data.kql = trans.queries.kql || '';
+          if (!data.splunk_spl) data.splunk_spl = trans.queries.splunk || '';
+          if (!data.wazuh_xml) data.wazuh_xml = trans.queries.wazuh || '';
+        }
+      } catch (_) {}
+    }
     S.artCache[id] = data;
     renderDetail(true);
   } catch (err) {
@@ -1252,10 +1406,13 @@ function detailHtml(p) {
       foot = '<span class="hint"><span class="dot accent pulse"></span>Checking the PR and its CI, then merging…</span>'; break;
     case 'merged':
       foot = `<span class="hint">Merged. The repo converts it to a Wazuh rule and deploys it; once that run finishes, fire the attack and record the alert.</span>
+        <button class="btn btn-primary" type="button" data-act="simulate" data-id="${id}"${busy} title="Trigger offline simulated telemetry alert without victim VMs">${icon('flame')}Simulate alert</button>
         ${runValBtn}
         <button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>${icon('shield')}Record validation</button>`; break;
     case 'validated':
-      foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM.</span>${runValBtn}`; break;
+      foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM.</span>
+        <button class="btn btn-ghost btn-sm" type="button" data-act="simulate" data-id="${id}"${busy} title="Re-fire simulated telemetry alert">${icon('flame')}Simulate alert</button>
+        ${runValBtn}`; break;
     case 'rejected':
       foot = `<span class="hint">Rejected. Reopen it to review again, or delete it.</span>${delBtn}
         <button class="btn btn-ghost" type="button" data-act="reopen" data-id="${id}"${busy}>${icon('retry')}Reopen</button>`; break;
@@ -1284,7 +1441,7 @@ function detailHtml(p) {
   if (!S.artCache[p.id]) {
     loadArtifacts(p.id);
   }
-  const art = S.artCache[p.id] || { sigma_yaml: p.sigma_yaml || '', wazuh_xml: '', splunk_spl: '' };
+  const art = S.artCache[p.id] || { sigma_yaml: p.sigma_yaml || '', wazuh_xml: '', splunk_spl: '', kql: '' };
   let activeCode = '';
   if (artTab === 'sigma') {
     activeCode = yamlHighlight(art.sigma_yaml || p.sigma_yaml || '');
@@ -1292,6 +1449,8 @@ function detailHtml(p) {
     activeCode = esc(art.wazuh_xml || (art.error ? 'Error loading: ' + art.error : 'No Wazuh XML generated yet (created on convert-deploy).'));
   } else if (artTab === 'splunk') {
     activeCode = esc(art.splunk_spl || (art.error ? 'Error loading: ' + art.error : 'No Splunk SPL query generated yet.'));
+  } else if (artTab === 'kql') {
+    activeCode = esc(art.kql || 'Translating to Sentinel KQL query...');
   }
 
   return `<div class="qdetail-scroll" data-id="${id}">
@@ -1313,6 +1472,7 @@ function detailHtml(p) {
           <button type="button" role="tab" data-arttab="sigma" data-id="${id}" aria-selected="${artTab === 'sigma'}">Sigma (YAML)</button>
           <button type="button" role="tab" data-arttab="wazuh" data-id="${id}" aria-selected="${artTab === 'wazuh'}">Wazuh XML</button>
           <button type="button" role="tab" data-arttab="splunk" data-id="${id}" aria-selected="${artTab === 'splunk'}">Splunk SPL</button>
+          <button type="button" role="tab" data-arttab="kql" data-id="${id}" aria-selected="${artTab === 'kql'}">Sentinel KQL</button>
         </div>
         <span class="acts">
           <button class="link-btn" type="button" data-act="copy-art" data-id="${id}">${icon('copy', 'ic-sm')}<span>copy</span></button>
@@ -1571,14 +1731,32 @@ const actions = {
   async 'copy-art'(id, el) {
     const p = findP(id);
     const artTab = S.artTab[id] || 'sigma';
-    const art = S.artCache[id] || { sigma_yaml: (p ? p.sigma_yaml : ''), wazuh_xml: '', splunk_spl: '' };
-    const text = artTab === 'sigma' ? (art.sigma_yaml || (p ? p.sigma_yaml : '')) : (artTab === 'wazuh' ? (art.wazuh_xml || '') : (art.splunk_spl || ''));
+    const art = S.artCache[id] || { sigma_yaml: (p ? p.sigma_yaml : ''), wazuh_xml: '', splunk_spl: '', kql: '' };
+    const text = artTab === 'sigma' ? (art.sigma_yaml || (p ? p.sigma_yaml : '')) : (artTab === 'wazuh' ? (art.wazuh_xml || '') : (artTab === 'kql' ? (art.kql || '') : (art.splunk_spl || '')));
     const label = el.querySelector('span') || el;
     try { await navigator.clipboard.writeText(text); label.textContent = 'copied'; } catch (_) { label.textContent = 'failed'; }
     setTimeout(() => { label.textContent = 'copy'; }, 1500);
   },
   async 'run-val'(id) {
     await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/run-validation`), 'Validation workflow dispatched on GitHub Actions');
+  },
+  async simulate(id, el) {
+    const btn = el && el.closest('button');
+    if (btn) btn.disabled = true;
+    toast('Simulating attack telemetry against Wazuh engine...');
+    try {
+      const res = await api('POST', `/api/proposals/${encodeURIComponent(id)}/simulate-alert`);
+      if (res && res.success) {
+        showSimulationModal(res);
+        toast('Detection alert fired successfully!');
+      } else {
+        toast('Simulation returned an error', false);
+      }
+    } catch (err) {
+      toast('Simulation failed: ' + err.message, false);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   },
 };
 $('qdetail').addEventListener('click', e => {
@@ -1684,6 +1862,185 @@ function renderSubmitView() {
       subSubmitBtn.disabled = false;
     }
   });
+}
+
+/* ================= simulation modal ================= */
+function showSimulationModal(res) {
+  const modal = $('simModal');
+  const body = $('simModalBody');
+  const a = res.alert || {};
+  const rule = a.rule || {};
+  const agent = a.agent || {};
+
+  body.innerHTML = `
+    <div class="sim-alert-banner">
+      <div class="pulse-icon">${icon('shield')}</div>
+      <div style="flex:1;">
+        <b>Rule ${esc(res.rule_id)} Fired Successfully</b>
+        <div style="font-size:12px; color:var(--ink-2); margin-top:2px;">
+          Level ${esc(rule.level || '8')} · Technique: <code>${esc(res.technique)}</code> · Agent: <b>${esc(agent.name || 'windows-victim')}</b>
+        </div>
+      </div>
+      <span class="pill ok">DETECTION VALIDATED</span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:11.5px; font-weight:600; text-transform:uppercase; color:var(--ink-3); letter-spacing:0.04em;">Generated Wazuh Alert Telemetry</span>
+      <span class="hint" style="color:var(--ok); font-size:11.5px;">SOAR ${res.soar_delivered ? 'Delivered to n8n/Telegram' : 'Pipeline Ready'}</span>
+    </div>
+    <div class="codebox" style="max-height:220px; margin-bottom:18px;">
+      <pre class="mono" style="font-size:11.5px; color:var(--ink); margin:0;">${esc(JSON.stringify(a, null, 2))}</pre>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-ghost" type="button" id="simDismissBtn">Close</button>
+      <button class="btn btn-approve" type="button" id="simRecordBtn">${icon('shield')}Record as ATT&amp;CK Evidence</button>
+    </div>
+  `;
+
+  modal.hidden = false;
+  $('simCloseBtn').onclick = () => { modal.hidden = true; };
+  $('simDismissBtn').onclick = () => { modal.hidden = true; };
+  $('simRecordBtn').onclick = () => {
+    modal.hidden = true;
+    S.drawer[res.proposal_id] = 'validate';
+    S.drafts['rule:' + res.proposal_id] = res.rule_id;
+    S.drafts['attack:' + res.proposal_id] = `Simulated ${res.technique} telemetry (Rule ${res.rule_id})`;
+    renderDetail(true);
+  };
+}
+
+/* ================= studio ================= */
+async function renderStudio() {
+  const studioYaml = $('studioYaml');
+  const studioOutput = $('studioQueryOutput');
+  const studioTranslateBtn = $('studioTranslateBtn');
+  const studioCopyBtn = $('studioCopyBtn');
+  const studioSubmitBtn = $('studioSubmitBtn');
+  const studioTabs = $('studioTabs');
+  const studioFile = $('studioFile');
+  const metaSIEM = $('metaSIEM');
+  const metaTech = $('metaTech');
+  const metaLogsource = $('metaLogsource');
+  const studioStatus = $('studioStatus');
+
+  if (!renderStudio._state) {
+    renderStudio._state = {
+      activeTab: 'splunk',
+      queries: {},
+      presets: []
+    };
+  }
+  const state = renderStudio._state;
+
+  if (!state.presets.length) {
+    try {
+      state.presets = await api('GET', '/api/rules/presets');
+      if (state.presets.length && !studioYaml.value.trim()) {
+        studioYaml.value = state.presets[0].yaml;
+      }
+    } catch (_) {}
+  }
+
+  function updateOutput() {
+    const q = state.queries[state.activeTab] || '// No query generated yet for this backend';
+    studioOutput.textContent = q;
+    const names = {
+      splunk: 'Splunk SPL (Enterprise & Cloud)',
+      kql: 'Microsoft Sentinel KQL (Advanced Hunting)',
+      lucene: 'Elasticsearch / OpenSearch (Lucene)',
+      wazuh: 'Wazuh XML Custom Ruleset'
+    };
+    metaSIEM.textContent = names[state.activeTab] || state.activeTab;
+  }
+
+  async function translate() {
+    const yaml = studioYaml.value.trim();
+    if (!yaml) { toast('Please enter or select a Sigma rule YAML', false); return; }
+    studioTranslateBtn.disabled = true;
+    studioStatus.textContent = 'Compiling...';
+    try {
+      const res = await api('POST', '/api/rules/translate', { sigma_yaml: yaml });
+      if (res.valid) {
+        state.queries = res.queries || {};
+        metaTech.textContent = res.technique || '–';
+        const ls = res.logsource || {};
+        metaLogsource.textContent = `${ls.product || 'any'}/${ls.category || ls.service || 'any'}`;
+        studioStatus.textContent = 'Translation successful';
+        updateOutput();
+        toast('Converted to all target SIEM backends');
+      } else {
+        studioStatus.textContent = 'Validation error';
+        toast('Invalid Sigma rule: ' + (res.error || 'Syntax error'), false);
+      }
+    } catch (err) {
+      studioStatus.textContent = 'Error: ' + err.message;
+      toast('Failed to compile: ' + err.message, false);
+    } finally {
+      studioTranslateBtn.disabled = false;
+    }
+  }
+
+  if (renderStudio._wired) {
+    if (!state.queries.splunk && studioYaml.value.trim()) {
+      translate();
+    }
+    return;
+  }
+  renderStudio._wired = true;
+
+  document.querySelectorAll('[data-preset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pId = btn.dataset.preset;
+      const found = state.presets.find(p => p.id === pId);
+      if (found) {
+        studioYaml.value = found.yaml;
+        toast(`Loaded preset: ${found.title}`);
+        translate();
+      }
+    });
+  });
+
+  studioTabs.addEventListener('click', e => {
+    const tabBtn = e.target.closest('[data-tab]');
+    if (!tabBtn) return;
+    studioTabs.querySelectorAll('.studio-tab').forEach(t => t.classList.remove('active'));
+    tabBtn.classList.add('active');
+    state.activeTab = tabBtn.dataset.tab;
+    updateOutput();
+  });
+
+  studioTranslateBtn.addEventListener('click', translate);
+
+  studioCopyBtn.addEventListener('click', () => {
+    const text = studioOutput.textContent;
+    if (text) {
+      navigator.clipboard.writeText(text).then(() => toast('Query copied to clipboard!'));
+    }
+  });
+
+  studioSubmitBtn.addEventListener('click', () => {
+    const y = studioYaml.value.trim();
+    if (!y) { toast('Please author or select a rule first', false); return; }
+    $('subYaml').value = y;
+    go('submit');
+  });
+
+  studioFile.addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      studioYaml.value = await file.text();
+      toast('Loaded ' + file.name);
+      translate();
+    } catch (err) {
+      toast('Failed to read file: ' + err.message, false);
+    }
+  });
+
+  if (studioYaml.value.trim()) {
+    translate();
+  }
 }
 $('qdetail').addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.draft; if (k) S.drafts[k] = e.target.value; });
 $('qdetail').addEventListener('keydown', e => {

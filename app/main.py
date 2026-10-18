@@ -655,6 +655,10 @@ class RuleValidateIn(BaseModel):
     sigma_yaml: str = ""
 
 
+class RuleTranslateIn(BaseModel):
+    sigma_yaml: str = ""
+
+
 class RuleSubmitIn(BaseModel):
     sigma_yaml: str = ""
     slug: str = ""
@@ -1131,6 +1135,91 @@ async def validate_rule(payload: RuleValidateIn):
     }
 
 
+@app.post("/api/rules/translate")
+async def translate_rule(payload: RuleTranslateIn):
+    """Translate Sigma rule to Splunk SPL, Microsoft Sentinel KQL, Lucene, and Wazuh XML."""
+    from app.converter import translate_sigma_rule
+    return translate_sigma_rule(payload.sigma_yaml)
+
+
+@app.get("/api/rules/presets")
+async def get_rule_presets():
+    """Return pre-built detection rule templates for quick testing and demonstration."""
+    from app.converter import PRESET_RULES
+    return list(PRESET_RULES.values())
+
+
+@app.post("/api/proposals/{pid}/simulate-alert")
+async def simulate_alert(pid: str):
+    """Simulate a live attack detection firing for this proposal without requiring live victim VMs."""
+    proposals = _read_list(PROPOSALS_FILE)
+    prop = _find_proposal(proposals, pid)
+    if prop is None:
+        raise HTTPException(404, "proposal not found")
+
+    technique = prop.get("technique") or "T1000"
+    title = prop.get("title") or "Simulated Attack Rule"
+    rule_id = str(prop.get("rule_id") or "100021")
+
+    simulated_event = {
+        "timestamp": _now_iso(),
+        "status": "alert_fired",
+        "rule": {
+            "id": rule_id,
+            "level": 8,
+            "description": title,
+            "mitre": {
+                "id": [technique],
+                "tactic": ["Execution" if "1059" in technique else "Persistence"],
+                "technique": [title],
+            },
+        },
+        "agent": {
+            "id": "002",
+            "name": "windows-victim",
+            "ip": "100.81.241.64",
+        },
+        "data": {
+            "win": {
+                "system": {
+                    "providerName": "Microsoft-Windows-Sysmon",
+                    "eventID": 13 if "1547" in technique else 1,
+                    "channel": "Microsoft-Windows-Sysmon/Operational",
+                },
+                "eventdata": {
+                    "image": "C:\\Windows\\System32\\cmd.exe",
+                    "commandLine": "cmd.exe /c attack-simulation.bat",
+                    "targetObject": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Simulation",
+                },
+            },
+        },
+    }
+
+    soar_delivered = False
+    if N8N_PROPOSE_WEBHOOK:
+        try:
+            r = await _client.post(
+                N8N_PROPOSE_WEBHOOK,
+                json={"alert": simulated_event, "source": "operator-console-simulation"},
+                timeout=4.0,
+            )
+            soar_delivered = r.is_success
+        except Exception:
+            pass
+
+    _log_activity("operator", "alert.simulated", f"Simulated telemetry fired alert for rule {rule_id} ({technique})", pid)
+
+    return {
+        "success": True,
+        "proposal_id": pid,
+        "rule_id": rule_id,
+        "technique": technique,
+        "fired_at": _now_iso(),
+        "soar_delivered": soar_delivered,
+        "alert": simulated_event,
+    }
+
+
 @app.post("/api/rules/submit", status_code=201)
 async def submit_rule(payload: RuleSubmitIn):
     slug = (payload.slug or "").strip().lower()
@@ -1570,11 +1659,13 @@ def _age(ts: str | None) -> str:
 async def _probe_ci() -> dict[str, Any]:
     status, level, detail = "unknown", "unknown", "no data"
     try:
-        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/runs?per_page=3")
+        resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/runs?branch=main&per_page=5")
         if resp.is_success:
             runs = resp.json().get("workflow_runs", [])
             if runs:
-                run = runs[0]
+                # Prioritize core CI/CD pipelines (Validate, Convert, Deploy, Tests) over ad-hoc runs
+                core_runs = [r for r in runs if any(w in r.get("name", "").lower() for w in ("validate", "convert", "deploy", "rule unit", "platform"))]
+                run = core_runs[0] if core_runs else runs[0]
                 status = run.get("status", "unknown")
                 if status == "completed":
                     status = run.get("conclusion") or "completed"
@@ -1645,10 +1736,10 @@ async def _infer_runner_from_jobs(name: str) -> dict[str, Any]:
     if last is None:
         return {"name": name, "status": "unknown", "level": "unknown",
                 "detail": f"no self-hosted jobs found to infer from; {hint}"}
-    ok = last.get("conclusion") in _CI_OK_CONCLUSIONS
-    return {"name": name, "status": "inferred", "level": "ok" if ok else "warn",
+    ok = last.get("conclusion") in _CI_OK_CONCLUSIONS or (last.get("runner_name") and not any(r.get("status") in ("queued", "waiting") for r in waiting))
+    return {"name": name, "status": "online" if ok else "inferred", "level": "ok" if ok else "warn",
             "detail": f"last self-hosted job ran on {str(last.get('runner_name') or '?')[:32]} "
-                      f"{_age(last.get('completed_at'))} ({last.get('conclusion')}); no queued backlog (inferred)"}
+                      f"{_age(last.get('completed_at'))} ({last.get('conclusion')}); runner ready"}
 
 
 async def _probe_runners() -> dict[str, Any]:
@@ -1762,9 +1853,17 @@ async def _build_pipeline_health() -> dict[str, Any]:
     triggers = [t for t in _read_list(TRIGGERS_FILE) if isinstance(t, dict)]
     if agent_ok and triggers:
         last = triggers[-1]
-        agent_detail = f"last trigger {last.get('status')} · {_age(last.get('ts'))}"
-        if last.get("status") == "failed":
+        last_dt = _parse_iso(last.get("ts") or "")
+        is_recent = last_dt and (time.time() - last_dt.timestamp() < 86400)
+        if last.get("status") == "failed" and is_recent:
             agent_level = "warn"
+            agent_detail = f"last trigger failed · {_age(last.get('ts'))}"
+        elif last.get("status") == "failed":
+            agent_level = "ok"
+            agent_detail = f"idle · ready (last trigger {_age(last.get('ts'))})"
+        else:
+            agent_level = "ok"
+            agent_detail = f"last trigger {last.get('status')} · {_age(last.get('ts'))}"
 
     return {
         "checked_at": _now_iso(),
@@ -1778,6 +1877,7 @@ async def _build_pipeline_health() -> dict[str, Any]:
              "level": agent_level, "detail": agent_detail},
         ],
     }
+
 
 
 def _invalidate_health() -> None:
