@@ -2913,7 +2913,9 @@ $('gateForm').addEventListener('submit', async e => {
 function boot() { S.booted = true; applyRoute(); loadVersion(); refreshAll(); }
 if (!token()) {
   let isDemo = false;
-  try { isDemo = sessionStorage.getItem('demoMode') === '1'; } catch (_) {}
+  try {
+    isDemo = sessionStorage.getItem('demoMode') === '1' || location.search.includes('demo=1') || location.hash.includes('demo');
+  } catch (_) {}
   if (isDemo) enterDemoSandbox(); else showGate('');
 } else {
   boot();
