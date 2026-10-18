@@ -49,6 +49,7 @@ tags:
         assert "splunk" in data["queries"]
         assert "kql" in data["queries"]
         assert "lucene" in data["queries"]
+        assert "cql" in data["queries"]
         assert "lsass" in data["queries"]["splunk"].lower() or "lsass" in data["queries"]["wazuh"].lower()
 
 

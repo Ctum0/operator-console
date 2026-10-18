@@ -201,8 +201,28 @@ def translate_sigma_rule(raw_yaml: str) -> dict[str, Any]:
             except Exception as e:
                 queries["lucene"] = f"# Elasticsearch Lucene error: {e}"
 
+            # CrowdStrike LogScale CQL
+            try:
+                sel = (parsed.get("detection") or {}).get("selection") or {}
+                cql_parts = []
+                for k, v in sel.items():
+                    f = k.split("|")[0]
+                    vals = v if isinstance(v, list) else [v]
+                    patt = "|".join([re.escape(str(x)) for x in vals])
+                    cql_parts.append(f"{f}=/{patt}/i")
+                filt = " and ".join(cql_parts) if cql_parts else "true"
+                queries["cql"] = (
+                    "// CrowdStrike LogScale CQL\n"
+                    "#event_simpleName=/ProcessRollup2/ or #event_simpleName=/RegistryEvent/\n"
+                    f"| {filt}\n"
+                    "| table([@timestamp, ComputerName, UserName, ImageFileName, CommandLine])"
+                )
+                backends_available.append("cql")
+            except Exception as e:
+                queries["cql"] = f"// CrowdStrike LogScale CQL error: {e}"
+
         except Exception as exc:
-            for b in ("splunk", "kql", "lucene"):
+            for b in ("splunk", "kql", "lucene", "cql"):
                 if b not in queries:
                     queries[b] = f"Translation error: {exc}"
 
