@@ -17,6 +17,10 @@
     }
     if (!localStorage.getItem('consoleToken')) document.documentElement.classList.add('locked');
   } catch (_) { document.documentElement.classList.add('locked'); }
+  try {
+    const savedTheme = localStorage.getItem('consoleTheme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  } catch (_) {}
 </script>
 <title>Operator Console</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12 2L3.5 5.8V11.5C3.5 16.8 7.1 21.8 12 23C16.9 21.8 20.5 16.8 20.5 11.5V5.8L12 2Z' fill='%234f46e5' fill-opacity='0.35' stroke='%23818cf8' stroke-width='1.6' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='11.8' r='4.2' stroke='%2338bdf8' stroke-width='1.3' stroke-dasharray='3 1.5'/%3E%3Ccircle cx='12' cy='11.8' r='1.6' fill='%2338bdf8'/%3E%3Cpath d='M12 7.6V9.4M12 14.2V16M7.8 11.8H9.6M14.4 11.8H16.2' stroke='%23a5b4fc' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -57,6 +61,7 @@
   --bad-dim: rgba(239, 68, 68, 0.12);
   --card-glass: linear-gradient(180deg, rgba(20, 25, 42, 0.75) 0%, rgba(13, 16, 28, 0.88) 100%);
   --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --code-bg: #06080e;
   --r-xl: 16px;
   --r-lg: 12px;
   --r: 8px;
@@ -66,6 +71,71 @@
   --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --ease: cubic-bezier(.16, 1, .3, 1);
 }
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg-subtle: #f1f5f9;
+  --side: #ffffff;
+  --panel: rgba(255, 255, 255, 0.92);
+  --elev: #ffffff;
+  --elev-2: #f1f5f9;
+  --hover: rgba(15, 23, 42, 0.04);
+  --border: rgba(15, 23, 42, 0.09);
+  --border-2: rgba(15, 23, 42, 0.14);
+  --border-3: rgba(15, 23, 42, 0.22);
+  --ink: #0f172a;
+  --ink-2: #1e293b;
+  --ink-3: #475569;
+  --ink-4: #64748b;
+  --accent: #4f46e5;
+  --accent-text: #4338ca;
+  --accent-btn: #4f46e5;
+  --accent-btn-hover: #3730a3;
+  --accent-dim: rgba(79, 70, 229, 0.08);
+  --accent-line: rgba(79, 70, 229, 0.26);
+  --accent-glow: rgba(79, 70, 229, 0.18);
+  --ok: #059669;
+  --ok-text: #047857;
+  --warn: #d97706;
+  --bad: #dc2626;
+  --pending: #64748b;
+  --ok-dim: rgba(5, 150, 105, 0.1);
+  --warn-dim: rgba(217, 119, 6, 0.1);
+  --bad-dim: rgba(220, 38, 38, 0.1);
+  --card-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+  --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --code-bg: #f8fafc;
+}
+
+[data-theme="light"] body {
+  background: radial-gradient(circle at 50% -10%, rgba(79, 70, 229, 0.05) 0%, transparent 55%),
+              radial-gradient(circle at 100% 100%, rgba(5, 150, 105, 0.03) 0%, transparent 45%),
+              var(--bg);
+  color: var(--ink-2);
+}
+[data-theme="light"] .card:hover { border-color: rgba(15, 23, 42, 0.18); }
+[data-theme="light"] .code { background: #f8fafc; color: #1e293b; border-color: rgba(15, 23, 42, 0.12); box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
+[data-theme="light"] .code .k { color: #4338ca; }
+[data-theme="light"] .code .s { color: #059669; }
+[data-theme="light"] .code .c { color: #94a3b8; }
+[data-theme="light"] .studio-editor { background: #ffffff; color: #0f172a; border-color: rgba(15, 23, 42, 0.15); }
+[data-theme="light"] .modal-card { background: #ffffff; color: var(--ink); box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.2); border-color: var(--border-2); }
+[data-theme="light"] .btn-ghost { background: rgba(15, 23, 42, 0.04); color: var(--ink-2); border-color: rgba(15, 23, 42, 0.1); }
+[data-theme="light"] .btn-ghost:hover:not(:disabled) { background: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] .btn-reject { background: #ffffff; color: var(--ink-2); border-color: rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .btn-reject:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: var(--bad); }
+[data-theme="light"] .steps { background: rgba(255, 255, 255, 0.9); border-color: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] .step.done .num { color: #ffffff; }
+[data-theme="light"] .toast { background: #ffffff; color: var(--ink); border-color: rgba(15, 23, 42, 0.12); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); }
+[data-theme="light"] * { scrollbar-color: #cbd5e1 transparent; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+[data-theme="light"] table.t thead th { background: #f1f5f9; color: var(--ink-3); border-bottom-color: var(--border); }
+[data-theme="light"] table.t tbody tr:hover { background: rgba(15, 23, 42, 0.025); }
+[data-theme="light"] .d-foot { background: rgba(255, 255, 255, 0.95); border-top-color: var(--border); }
+[data-theme="light"] .presets-bar { background: #f8fafc; border-bottom-color: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] .studio-query-container { background: #f8fafc; border-top-color: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] .codebox { background: #f8fafc; border-color: rgba(15, 23, 42, 0.08); }
 * { margin:0; padding:0; box-sizing:border-box; }
 html { font-size:14px; height:100%; }
 body {
@@ -516,6 +586,18 @@ table.t tr.cov-detail:hover { background: transparent; }
 .cov-detail .evidence dd code { color: var(--ink); }
 .cov-detail .evidence dd a { margin-left:10px; font-size:12.5px; }
 .stats { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:18px; margin-bottom:18px; }
+.tactic-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:10px; margin-bottom:18px; }
+.tactic-card {
+  padding: 12px 14px; border-radius: var(--r); border: 1px solid var(--border);
+  background: var(--card-glass); cursor: pointer; transition: all .15s ease;
+  display: flex; flex-direction: column; gap: 5px; text-align: left;
+}
+.tactic-card:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+.tactic-card.active { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 1px var(--accent); }
+.tactic-card-head { display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-3); }
+.tactic-card-num { font-size:17px; font-weight:750; color:var(--ink); letter-spacing:-0.02em; }
+.tactic-card-bar { height:4px; background:var(--border-2); border-radius:2px; overflow:hidden; margin-top:2px; }
+.tactic-card-fill { height:100%; background:var(--ok); border-radius:2px; }
 
 /* ================= HEALTH / ACTIVITY ================= */
 .hgrid { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px; }
@@ -750,6 +832,9 @@ html.locked .gate[hidden] { display:grid !important; }
     <div class="user">
       <div class="avatar">OP</div>
       <div class="who"><b>Operator</b><span id="buildInfo">loading…</span></div>
+      <button class="icon-btn" id="themeBtn" type="button" title="Toggle Light / Dark theme" aria-label="Toggle theme">
+        <svg class="ic" id="themeIcon" viewBox="0 0 16 16" aria-hidden="true"></svg>
+      </button>
       <button class="icon-btn" id="lockBtn" type="button" title="Lock: forget the token on this browser" aria-label="Lock console">
         <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
       </button>
@@ -770,7 +855,12 @@ html.locked .gate[hidden] { display:grid !important; }
         <svg class="ic ic-lg" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg>
       </button>
       <div class="brand"><div class="brand-mark"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l5 2v4c0 3.2-2.2 5.6-5 7-2.8-1.4-5-3.8-5-7v-4z"/></svg></div><div class="brand-name">Operator Console</div></div>
-      <button class="btn btn-primary btn-sm" type="button" data-request>Request</button>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+        <button class="icon-btn" id="mobileThemeBtn" type="button" title="Toggle theme" aria-label="Toggle theme">
+          <svg class="ic" id="mobileThemeIcon" viewBox="0 0 16 16" aria-hidden="true"></svg>
+        </button>
+        <button class="btn btn-primary btn-sm" type="button" data-request>Request</button>
+      </div>
     </header>
 
     <!-- OVERVIEW -->
@@ -838,15 +928,32 @@ html.locked .gate[hidden] { display:grid !important; }
     <!-- COVERAGE -->
     <section class="page view" data-view="coverage" aria-labelledby="tCov" hidden>
       <div class="page-head">
-        <div><h1 id="tCov">ATT&amp;CK coverage</h1><p>Every detection in the platform's attack matrix and whether it has been proven against a real attack.</p></div>
-        <div class="actions"><a class="btn btn-ghost" id="covSource" href="#" target="_blank" rel="noopener noreferrer"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5h6.5V10M12.5 3.5l-8 8"/></svg>View source</a></div>
+        <div><h1 id="tCov">ATT&amp;CK coverage</h1><p>Every detection in the platform's attack matrix, mapped to MITRE tactics and proven in Wazuh SIEM.</p></div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="covExportNavBtn" type="button" title="Export MITRE ATT&amp;CK Navigator layer JSON">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+            Export Navigator Layer
+          </button>
+          <a class="btn btn-ghost" id="covSource" href="#" target="_blank" rel="noopener noreferrer"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5h6.5V10M12.5 3.5l-8 8"/></svg>View source</a>
+        </div>
       </div>
       <div class="stats" id="covStats"></div>
+      <div id="covTacticNav"></div>
       <div class="card">
         <div class="toolbar">
           <label class="search"><span class="sr-only">Filter detections</span>
             <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.75"/><path d="m10.5 10.5 3 3"/></svg>
             <input class="input" id="covSearch" type="search" placeholder="Filter by technique, tactic, rule" autocomplete="off"></label>
+          <select class="input" id="covTactic" aria-label="Tactic filter" style="max-width:210px;">
+            <option value="all">All ATT&amp;CK Tactics</option>
+            <option value="Execution">Execution</option>
+            <option value="Persistence">Persistence</option>
+            <option value="Privilege Escalation">Privilege Escalation</option>
+            <option value="Defense Impairment">Defense Impairment / Evasion</option>
+            <option value="Credential Access">Credential Access</option>
+            <option value="Discovery">Discovery</option>
+            <option value="Lateral Movement">Lateral Movement</option>
+          </select>
           <select class="input" id="covStatus" aria-label="Status filter">
             <option value="all">All statuses</option><option value="ok">Validated</option><option value="warn">In progress</option><option value="none">Untested or blocked</option></select>
           <div class="right" id="covMeta"></div>
@@ -897,8 +1004,8 @@ html.locked .gate[hidden] { display:grid !important; }
           <p>Author Sigma rules, preview real-time multi-backend transpilation across 5 SIEM dialects, test offline alert generation, and publish directly to the PR review queue.</p>
         </div>
         <div class="actions" style="display:flex; gap:10px;">
-          <button class="btn btn-ghost" type="button" id="studioSimulateBtn" title="Replay synthetic telemetry against this rule">
-            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.5 1.5l-5 7h4l-1.5 6 6.5-8h-4z"/></svg>
+          <button class="btn btn-ghost" type="button" id="studioSimulateBtn" title="Replay synthetic telemetry alert against this rule">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.5 1.5c.5 2 2 3 2 5a3.5 3.5 0 0 1-7 0c0-.8.3-1.5.8-2C3 5.3 2 6.8 2 8.5A6 6 0 0 0 8 14.5a6 6 0 0 0 6-6c0-3.5-3-6-5.5-7z"/></svg>
             Simulate Alert
           </button>
           <button class="btn btn-ghost" type="button" id="studioValidateBtn" title="Lint and validate Sigma YAML syntax">
@@ -929,13 +1036,43 @@ html.locked .gate[hidden] { display:grid !important; }
             </div>
           </div>
 
-          <!-- Presets bar -->
-          <div class="presets-bar" id="studioPresets">
-            <span class="presets-label">Presets:</span>
-            <button class="chip-btn" type="button" data-preset="t1547-001">Run Key (T1547.001)</button>
-            <button class="chip-btn" type="button" data-preset="t1003-001">LSASS Dump (T1003.001)</button>
-            <button class="chip-btn" type="button" data-preset="t1053-005">Scheduled Task (T1053.005)</button>
-            <button class="chip-btn" type="button" data-preset="t1059-001">PowerShell Cradle (T1059.001)</button>
+          <!-- Presets & TTP library bar -->
+          <div class="presets-bar" id="studioPresets" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="presets-label" style="font-weight:700; color:var(--ink-2); display:flex; align-items:center; gap:4px;">
+                <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+                MITRE TTP:
+              </span>
+              <select class="input" id="studioTtpSelect" style="font-size:12px; height:30px; padding:2px 10px; max-width:280px; font-weight:600;">
+                <option value="">– Choose MITRE Technique –</option>
+                <optgroup label="Execution">
+                  <option value="t1059-001">T1059.001 · PowerShell Download Cradle</option>
+                  <option value="t1053-002">T1053.002 · At Command Task Scheduling</option>
+                </optgroup>
+                <optgroup label="Persistence">
+                  <option value="t1547-001">T1547.001 · Registry Run Keys / Startup Folder</option>
+                  <option value="t1053-005">T1053.005 · Scheduled Task Creation</option>
+                  <option value="t1543-003">T1543.003 · Suspicious Windows Service</option>
+                </optgroup>
+                <optgroup label="Defense Evasion / Impairment">
+                  <option value="t1685-005">T1685.005 · Clear Windows Event Logs (wevtutil)</option>
+                </optgroup>
+                <optgroup label="Credential Access">
+                  <option value="t1003-001">T1003.001 · LSASS Memory Dumping</option>
+                  <option value="t1555-003">T1555.003 · Web Browser Credential Store Access</option>
+                </optgroup>
+                <optgroup label="Lateral Movement">
+                  <option value="t1021-001">T1021.001 · Remote Desktop Protocol (RDP) Lateral Execution</option>
+                </optgroup>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-left:auto;">
+              <span class="presets-label" style="font-size:11px; color:var(--ink-4);">Quick presets:</span>
+              <button class="chip-btn" type="button" data-preset="t1547-001">Run Key</button>
+              <button class="chip-btn" type="button" data-preset="t1003-001">LSASS Dump</button>
+              <button class="chip-btn" type="button" data-preset="t1059-001">PowerShell</button>
+              <button class="chip-btn" type="button" data-preset="t1685-005">Event Log Clear</button>
+            </div>
           </div>
 
           <textarea class="input mono studio-editor" id="studioYaml" placeholder="title: Suspicious Process Creation..."></textarea>
@@ -1194,7 +1331,7 @@ const TABS = [
 const S = {
   view: 'overview', sel: null, tab: 'action', q: '', demo: false,
   proposals: [], counts: {}, health: null, coverage: null, triggers: null, activity: null,
-  chartDays: 14, live: true, covQ: '', covStatus: 'all', covOpen: new Set(), actActor: '', actLimit: 60,
+  chartDays: 14, live: true, covQ: '', covStatus: 'all', covTactic: 'all', covOpen: new Set(), actActor: '', actLimit: 60,
   drawer: {}, yamlOpen: new Set(), armed: {}, busy: new Set(), drafts: {},
   artTab: {}, artCache: {}, depStatus: {}, ciStatus: {},
   detailSig: '', timer: null, booted: false,
@@ -1711,6 +1848,12 @@ const ICONS = {
   back: '<path d="M10 3.5 5.5 8l4.5 4.5"/>',
   gear: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>',
   user: '<circle cx="8" cy="5" r="3"/><path d="M2.5 14a5.5 5.5 0 0 1 11 0"/>',
+  flame: '<path d="M8.5 1.5c.5 2 2 3 2 5a3.5 3.5 0 0 1-7 0c0-.8.3-1.5.8-2C3 5.3 2 6.8 2 8.5A6 6 0 0 0 8 14.5a6 6 0 0 0 6-6c0-3.5-3-6-5.5-7z"/>',
+  sun: '<circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/>',
+  moon: '<path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/>',
+  matrix: '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
+  download: '<path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/>',
+  edit: '<path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"/>',
 };
 function icon(name, cls = '') { return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 16 16" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 
@@ -1769,6 +1912,32 @@ function nowLocalInput() { return new Date(Date.now() - new Date().getTimezoneOf
 function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html; el.__html = html; } }
 function emptyHtml(ic, title, text, extra = '') { return `<div class="empty"><div class="em-icon">${icon(ic)}</div><b>${title}</b>${text}${extra}</div>`; }
 
+/* ================= theme ================= */
+function getTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'dark';
+}
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem('consoleTheme', theme); } catch (_) {}
+  updateThemeIcon();
+}
+function toggleTheme() {
+  const cur = getTheme();
+  setTheme(cur === 'light' ? 'dark' : 'light');
+}
+function updateThemeIcon() {
+  const isLight = getTheme() === 'light';
+  const ic = isLight ? 'moon' : 'sun';
+  const themeSvg = $('themeIcon');
+  if (themeSvg) themeSvg.innerHTML = ICONS[ic] || '';
+  const mobSvg = $('mobileThemeIcon');
+  if (mobSvg) mobSvg.innerHTML = ICONS[ic] || '';
+  const themeBtn = $('themeBtn');
+  if (themeBtn) themeBtn.title = isLight ? 'Switch to Dark Theme' : 'Switch to Light Theme';
+  const mobBtn = $('mobileThemeBtn');
+  if (mobBtn) mobBtn.title = isLight ? 'Switch to Dark Theme' : 'Switch to Light Theme';
+}
+
 /* ================= status vocabulary ================= */
 const STATUS = {
   pending: ['Pending review', ''], approved: ['Approved', 'accent'], merging: ['Merging', 'accent'],
@@ -1805,25 +1974,37 @@ function covItems() {
   const cov = S.coverage; if (!cov) return [];
   const cols = (cov.columns || []).map(c => String(c).toLowerCase());
   const iT = cols.indexOf('technique') >= 0 ? cols.indexOf('technique') : 1;
+  const iTac = cols.indexOf('tactic') >= 0 ? cols.indexOf('tactic') : 2;
   const iS = cols.indexOf('status') >= 0 ? cols.indexOf('status') : 7;
   return (cov.rows || []).map(r => {
     const cell = (i, keys) => Array.isArray(r) ? String(r[i] != null ? r[i] : '?') : String(keys.map(k => r[k]).find(v => v != null && v !== '') || '?');
     const tech = cell(iT, ['technique', 'Technique']), status = cell(iS, ['status', 'Status']);
+    const tactic = cell(iTac, ['tactic', 'Tactic']);
     const m = tech.match(/^(T\d{4}(?:\.\d{3})?)\s*(.*)$/);
-    return { row: r, id: cell(0, ['id', 'ID']), code: m ? m[1] : '', name: m ? m[2] : tech, status, lv: covLevel(status) };
+    return { row: r, id: cell(0, ['id', 'ID']), code: m ? m[1] : '', name: m ? m[2] : tech, tactic: tactic && tactic !== '?' ? tactic : 'Enterprise', status, lv: covLevel(status) };
   });
 }
 
 /* ================= router ================= */
 function parseHash() {
-  const parts = location.hash.replace(/^#\/?/, '').split('/');
+  const raw = location.hash.replace(/^#\/?/, '');
+  const [path, query] = raw.split('?');
+  const params = new URLSearchParams(query || '');
+  const parts = (path || '').split('/');
   const view = VIEWS.includes(parts[0]) ? parts[0] : 'overview';
-  return { view, sel: view === 'queue' && parts[1] ? decodeURIComponent(parts[1]) : null };
+  const sel = view === 'queue' && parts[1] && !parts[1].startsWith('tab=') ? decodeURIComponent(parts[1]) : null;
+  const tab = params.get('tab') || null;
+  return { view, sel, tab };
 }
-function go(view, sel) { location.hash = '#/' + view + (sel ? '/' + encodeURIComponent(sel) : ''); }
+function go(view, sel, tab) {
+  let h = '#/' + view;
+  if (sel) h += '/' + encodeURIComponent(sel);
+  if (tab) h += '?tab=' + encodeURIComponent(tab);
+  location.hash = h;
+}
 const TITLES = { overview: 'Overview', queue: 'Review queue', studio: 'Detection Studio', submit: 'Submit rule', coverage: 'Coverage', runs: 'Agent runs', activity: 'Activity', health: 'Pipeline health' };
 function backLabel() {
-  const prev = (S.prevRoute || '').replace(/^#\/?/, '').split('/')[0];
+  const prev = (S.prevRoute || '').replace(/^#\/?/, '').split('/')[0].split('?')[0];
   return prev && prev !== 'queue' && TITLES[prev] ? 'Back to ' + TITLES[prev] : 'All proposals';
 }
 function applyRoute() {
@@ -1832,6 +2013,10 @@ function applyRoute() {
   const changed = r.view !== S.view;
   S.view = r.view;
   S.sel = r.sel;
+  if (r.tab && TABS.some(t => t[0] === r.tab)) {
+    S.tab = r.tab;
+    try { localStorage.setItem('consoleTab', S.tab); } catch (_) {}
+  }
   document.querySelectorAll('.view').forEach(v => { v.hidden = v.dataset.view !== S.view; });
   document.querySelectorAll('[data-nav]').forEach(a => {
     if (a.dataset.nav === S.view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -1839,6 +2024,7 @@ function applyRoute() {
   document.title = (TITLES[S.view] || 'Console') + ' · Operator Console';
   closeNav();
   if (changed) { $('main').scrollTop = 0; window.scrollTo(0, 0); }
+  updateThemeIcon();
   renderView();
 }
 window.addEventListener('hashchange', applyRoute);
@@ -1871,15 +2057,18 @@ function renderOverview() {
   $('checkedAgo').textContent = S.health ? (h.bad.length ? h.bad.map(x => x.name).join(', ') + ' down · ' : '')
     + (h.unmonitored.length ? h.unmonitored.length + ' not monitored · ' : '') + 'checked ' + ago(S.health.checked_at) : 'pipeline status loading';
   const ok = items.filter(i => i.lv === 'ok').length;
+  const firstMerged = S.proposals.find(p => p.status === 'merged');
+  const firstValidated = S.proposals.find(p => p.status === 'validated');
+  const mergedHref = firstMerged ? `#/queue/${encodeURIComponent(firstMerged.id)}?tab=merged` : firstValidated ? `#/queue/${encodeURIComponent(firstValidated.id)}?tab=validated` : '#/queue?tab=all';
   const kpi = (href, ic, tint, label, value, sub, subCls) => `<a class="card kpi" href="${href}" style="--tint:${tint}">
       <div class="kpi-label">${icon(ic)}${label}</div><div class="kpi-value">${value}</div>
       <div class="kpi-sub ${subCls || ''}">${sub}</div>${icon(ic, 'kpi-mark')}</a>`;
   $('kpis').innerHTML = [
-    kpi('#/queue', 'inbox', 'var(--accent-text)', 'Needs decision', pending + failed,
+    kpi('#/queue?tab=action', 'inbox', 'var(--accent-text)', 'Needs decision', pending + failed,
       failed ? `${failed} merge${failed > 1 ? 's' : ''} failed` : pending ? 'Waiting for your review' : 'Queue is clear', failed ? 'bad' : pending ? '' : 'ok'),
     kpi('#/coverage', 'shield', 'var(--ok)', 'Validated detections', items.length ? `${ok}<small>/${items.length}</small>` : '–',
       items.length ? `${Math.round(100 * ok / items.length)}% of the matrix proven` : 'Coverage loading', ''),
-    kpi('#/queue', 'merge', 'var(--accent-text)', 'Rules shipped', merged + validated,
+    kpi(mergedHref, 'merge', 'var(--accent-text)', 'Rules shipped', merged + validated,
       merged ? `${merged} awaiting validation` : merged + validated ? 'All shipped rules validated' : 'None merged yet', merged ? 'warn' : ''),
     kpi('#/health', 'pulse', h.worst === 'bad' ? 'var(--bad)' : h.worst === 'ok' ? 'var(--ok)' : 'var(--warn)', 'Pipeline checks',
       h.comps.length ? `${h.ok}<small>/${h.monitored}</small>` : '–',
@@ -1892,9 +2081,21 @@ function renderOverview() {
       : '<p class="error-line">No components reported.</p>';
   }
   const need = S.proposals.filter(p => ['pending', 'merge_failed', 'merging'].includes(p.status)).slice(0, 5);
-  $('ovQueue').innerHTML = need.length ? '<div class="rows">' + need.map(p => `<a class="prow" href="#/queue/${encodeURIComponent(p.id)}">
-      <span class="chip">${esc(p.technique)}</span><span class="title">${esc(p.title)}</span>${statusPill(p)}<span class="age">${esc(ago(p.created_at))}</span></a>`).join('') + '</div>'
-    : emptyHtml('inbox', "You're all caught up.", 'Nothing is waiting for a decision.', `<br><button class="btn btn-ghost" type="button" data-request>${icon('plus')}Request a proposal</button>`);
+  const awaitingVal = S.proposals.filter(p => p.status === 'merged').slice(0, 3);
+  let queueHtml = '';
+  if (need.length) {
+    queueHtml += '<div class="rows">' + need.map(p => `<a class="prow" href="#/queue/${encodeURIComponent(p.id)}?tab=action">
+      <span class="chip">${esc(p.technique)}</span><span class="title">${esc(p.title)}</span>${statusPill(p)}<span class="age">${esc(ago(p.created_at))}</span></a>`).join('') + '</div>';
+  }
+  if (awaitingVal.length) {
+    if (need.length) queueHtml += '<div style="margin:14px 0 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent-text); display:flex; align-items:center; gap:6px;">' + icon('shield', 'ic-sm') + 'Awaiting Purple-Team Validation</div>';
+    queueHtml += '<div class="rows">' + awaitingVal.map(p => `<a class="prow" href="#/queue/${encodeURIComponent(p.id)}?tab=merged">
+      <span class="chip">${esc(p.technique)}</span><span class="title">${esc(p.title)}</span><span class="pill warn"><span class="dot pulse"></span>Awaiting Validation</span><span class="age">${esc(ago(p.merged_at || p.created_at))}</span></a>`).join('') + '</div>';
+  }
+  if (!queueHtml) {
+    queueHtml = emptyHtml('inbox', "You're all caught up.", 'Nothing is waiting for a decision or validation.', `<br><button class="btn btn-ghost" type="button" data-request>${icon('plus')}Request a proposal</button>`);
+  }
+  $('ovQueue').innerHTML = queueHtml;
   if (S.activity) {
     const acts = (S.activity.activity || []).slice(0, 6);
     setHTML($('ovActivity'), acts.length ? acts.map(a => feedRow(a, false)).join('') : '<p style="color:var(--ink-3)">No activity yet.</p>');
@@ -2003,8 +2204,19 @@ function renderTabs() {
     return `<button type="button" role="tab" data-tab="${key}" aria-selected="${S.tab === key}">${label}<span class="n">${n}</span></button>`;
   }).join('');
 }
-function isDesktop() { return matchMedia('(min-width: 961px)').matches; }
 function renderQueue() {
+  if (S.sel) {
+    const selProp = S.proposals.find(x => x.id === S.sel);
+    if (selProp && !filtered().some(x => x.id === S.sel)) {
+      if (selProp.status === 'merged') S.tab = 'merged';
+      else if (selProp.status === 'validated') S.tab = 'validated';
+      else if (selProp.status === 'rejected') S.tab = 'rejected';
+      else if (selProp.origin === 'human') S.tab = 'human';
+      else if (selProp.origin === 'ai') S.tab = 'ai';
+      else S.tab = 'all';
+      try { localStorage.setItem('consoleTab', S.tab); } catch (_) {}
+    }
+  }
   renderTabs();
   const list = filtered();
   if (!S.sel && isDesktop() && list.length) S.sel = list[0].id;
@@ -2289,6 +2501,59 @@ function detailHtml(p) {
 }
 
 /* ================= coverage ================= */
+function exportAttackNavigatorLayer() {
+  const items = covItems();
+  const techniques = items.filter(i => i.code).map(i => {
+    const isOk = i.lv === 'ok';
+    const isWarn = i.lv === 'warn';
+    return {
+      techniqueID: i.code,
+      tactic: (i.tactic || 'execution').toLowerCase().replace(/\s+/g, '-'),
+      score: isOk ? 100 : isWarn ? 50 : 20,
+      color: isOk ? '#10b981' : isWarn ? '#f59e0b' : '#ef4444',
+      comment: `${i.id}: ${i.name} (${i.status})`,
+      enabled: true,
+    };
+  });
+  const layer = {
+    name: "Operator Console ATT&CK Coverage Matrix",
+    versions: { "attack": "14", "navigator": "4.8.0", "layer": "4.3" },
+    domain: "enterprise-attack",
+    description: "Automated ATT&CK coverage export from Operator Console detection pipeline",
+    filters: { "platforms": ["windows", "linux"] },
+    sorting: 3,
+    layout: {
+      "layout": "side",
+      "aggregateFunction": "average",
+      "showID": true,
+      "showName": true,
+      "showAggregateScores": true,
+      "countUnscored": false
+    },
+    techniques,
+    gradient: {
+      colors: ["#ef4444", "#f59e0b", "#10b981"],
+      minValue: 0,
+      maxValue: 100
+    },
+    legendItems: [
+      { label: "Validated (Live in Wazuh)", color: "#10b981" },
+      { label: "In Progress / Staged", color: "#f59e0b" },
+      { label: "Untested / Planned", color: "#ef4444" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(layer, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `attack-navigator-layer-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Exported MITRE ATT&CK Navigator Layer JSON');
+}
+
 function renderCoverage() {
   const cov = S.coverage, items = covItems();
   if (!cov) return;
@@ -2297,13 +2562,51 @@ function renderCoverage() {
   $('covStats').innerHTML = stat('shield', 'var(--ok)', 'Validated', ok, `${items.length ? Math.round(100 * ok / items.length) : 0}% of ${items.length} detections`)
     + stat('pulse', 'var(--warn)', 'In progress', warn, 'Partial, manual or pending proof')
     + stat('target', 'var(--ink-3)', 'Untested or blocked', none, 'Need an attack run or a fix');
+
+  // MITRE Tactic Navigator Summary Grid
+  const TACTICS_NAV = [
+    { id: 'all', name: 'All Tactics', icon: 'matrix', desc: 'Enterprise Matrix' },
+    { id: 'Execution', name: 'Execution', icon: 'server', desc: 'Sysmon & Shells' },
+    { id: 'Persistence', name: 'Persistence', icon: 'shield', desc: 'Run Keys, Tasks & Services' },
+    { id: 'Defense Impairment', name: 'Defense Evasion', icon: 'ban', desc: 'Log Clearing & Anti-Forensics' },
+    { id: 'Credential Access', name: 'Credential Access', icon: 'target', desc: 'LSASS & Passwords' },
+    { id: 'Lateral Movement', name: 'Lateral Movement', icon: 'branch', desc: 'RDP & Remote Admin' },
+  ];
+  const tacNav = $('covTacticNav');
+  if (tacNav) {
+    tacNav.innerHTML = `<div class="tactic-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:16px;">
+      ${TACTICS_NAV.map(t => {
+        const isSel = (S.covTactic || 'all') === t.id;
+        const cnt = t.id === 'all' ? items.length : items.filter(i => (i.tactic || '').toLowerCase().includes(t.id.toLowerCase()) || (t.id === 'Defense Impairment' && (i.tactic || '').includes('Defense'))).length;
+        const okC = t.id === 'all' ? ok : items.filter(i => ((i.tactic || '').toLowerCase().includes(t.id.toLowerCase()) || (t.id === 'Defense Impairment' && (i.tactic || '').includes('Defense'))) && i.lv === 'ok').length;
+        return `<button class="card tactic-card" type="button" data-tactic="${esc(t.id)}" style="cursor:pointer; text-align:left; padding:12px 14px; border:1px solid ${isSel ? 'var(--accent-line)' : 'var(--border)'}; background:${isSel ? 'var(--accent-dim)' : 'var(--panel)'}; border-radius:var(--r); transition:all 0.15s ease;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <span style="font-size:12px; font-weight:700; color:${isSel ? 'var(--accent-text)' : 'var(--ink)'}; display:flex; align-items:center; gap:6px;">
+              ${icon(t.icon, 'ic-sm')}${esc(t.name)}
+            </span>
+            <span class="pill ${okC === cnt && cnt > 0 ? 'ok' : 'muted'}" style="font-size:10px; padding:1px 5px;">${okC}/${cnt}</span>
+          </div>
+          <div style="font-size:11px; color:var(--ink-4);">${esc(t.desc)}</div>
+        </button>`;
+      }).join('')}
+    </div>`;
+  }
+
   const src = safeUrl(cov.source);
   $('covSource').href = src ? src.replace('raw.githubusercontent.com', 'github.com').replace(/\/main\//, '/blob/main/') : '#';
   $('covMeta').innerHTML = (cov.stale ? `<span class="tag warn" title="${esc('Source error: ' + (cov.error || 'unknown'))}">${cov.sample ? 'sample data' : 'stale copy'}</span>` : '')
     + (cov.fetched_at ? `<span>Synced ${esc(ago(cov.fetched_at))}</span>` : '');
+
   const needle = S.covQ.toLowerCase();
-  const rows = items.filter(i => (S.covStatus === 'all' || i.lv === S.covStatus) &&
-    (!needle || (Array.isArray(i.row) ? i.row.join(' ') : JSON.stringify(i.row)).toLowerCase().includes(needle)));
+  const rows = items.filter(i => {
+    const statusMatch = S.covStatus === 'all' || i.lv === S.covStatus;
+    const tacticMatch = !S.covTactic || S.covTactic === 'all' ||
+      (i.tactic && i.tactic.toLowerCase().includes(S.covTactic.toLowerCase())) ||
+      (S.covTactic === 'Defense Impairment' && i.tactic && (i.tactic.includes('Defense') || i.tactic.includes('Evasion')));
+    const textMatch = !needle || (Array.isArray(i.row) ? i.row.join(' ') : JSON.stringify(i.row)).toLowerCase().includes(needle) || (i.code && i.code.toLowerCase().includes(needle)) || (i.tactic && i.tactic.toLowerCase().includes(needle));
+    return statusMatch && tacticMatch && textMatch;
+  });
+
   const cols = cov.columns || [];
   const lc = cols.map(c => String(c).toLowerCase());
   const iS = lc.indexOf('status') >= 0 ? lc.indexOf('status') : 7, iT = lc.indexOf('technique') >= 0 ? lc.indexOf('technique') : 1;
@@ -2335,7 +2638,12 @@ function renderCoverage() {
       <dt>Wazuh rule</dt><dd>${code(v(col('wazuh rule', 5)))}</dd>
       <dt>SPL file</dt><dd>${code(spl)}${find(file(spl))}</dd>
       <dt>Validation</dt><dd>${code(i.status)}</dd>
-      <dt>Notes</dt><dd>${code(v(col('notes', 8)))}</dd></dl>`;
+      <dt>Notes</dt><dd>${code(v(col('notes', 8)))}</dd></dl>
+      <div style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span style="font-size:12px; color:var(--ink-4); font-weight:600;">Actions:</span>
+        <button class="btn btn-ghost btn-sm" type="button" data-cov-studio="${esc(i.code || i.id)}" title="Open in Detection Studio with this TTP template">${icon('edit', 'ic-sm')}Author in Studio</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-cov-target="${esc(i.code || i.id)}" data-cov-name="${esc(i.name)}" title="Dispatch AI Detection Engineer for this TTP">${icon('bot', 'ic-sm')}Target with AI</button>
+      </div>`;
   };
   $('covTable').innerHTML = rows.length ? `<table class="t"><thead><tr><th scope="col"><span class="sr-only">Details</span></th>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(i => {
@@ -2345,7 +2653,23 @@ function renderCoverage() {
     }).join('')}</tbody></table>`
     : emptyHtml('search', 'No detections match.', 'Clear the filter to see the whole matrix.');
 }
+
 $('covTable').addEventListener('click', e => {
+  const sBtn = e.target.closest('[data-cov-studio]');
+  if (sBtn) {
+    const raw = sBtn.dataset.covStudio;
+    const m = raw.match(/T\d{4}(?:\.\d{3})?/i);
+    const tech = m ? m[0] : raw;
+    location.hash = '#/studio?ttp=' + encodeURIComponent(tech);
+    return;
+  }
+  const tBtn = e.target.closest('[data-cov-target]');
+  if (tBtn) {
+    const tech = tBtn.dataset.covTarget;
+    const name = tBtn.dataset.covName || tech;
+    requestProposal(tech, name);
+    return;
+  }
   const b = e.target.closest('[data-cov]') || (!e.target.closest('a, button') && e.target.closest('[data-cov-row]'));
   if (!b) return;
   const id = b.dataset.cov || b.dataset.covRow;
@@ -2353,6 +2677,26 @@ $('covTable').addEventListener('click', e => {
   renderCoverage();
   const t = $('covTable').querySelector(`[data-cov="${CSS.escape(id)}"]`); if (t && b.matches('button')) t.focus();
 });
+
+const tacNavEl = $('covTacticNav');
+if (tacNavEl) {
+  tacNavEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-tactic]');
+    if (!b) return;
+    S.covTactic = b.dataset.tactic;
+    if ($('covTactic')) $('covTactic').value = S.covTactic;
+    renderCoverage();
+  });
+}
+const covTacticSel = $('covTactic');
+if (covTacticSel) {
+  covTacticSel.addEventListener('change', e => {
+    S.covTactic = e.target.value;
+    renderCoverage();
+  });
+}
+const exportNavBtn = $('covExportNavBtn');
+if (exportNavBtn) exportNavBtn.addEventListener('click', exportAttackNavigatorLayer);
 $('covSearch').addEventListener('input', e => { S.covQ = e.target.value.trim(); renderCoverage(); });
 $('covStatus').addEventListener('change', e => { S.covStatus = e.target.value; renderCoverage(); });
 
@@ -2735,13 +3079,39 @@ async function renderStudio() {
   }
   const state = renderStudio._state;
 
+  function loadPreset(pId) {
+    if (!pId) return false;
+    const cleanId = String(pId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const found = state.presets.find(p =>
+      p.id.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId ||
+      p.slug.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId ||
+      (p.technique && p.technique.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId)
+    );
+    if (found) {
+      studioYaml.value = found.yaml;
+      const ttpSel = $('studioTtpSelect');
+      if (ttpSel) ttpSel.value = found.id;
+      toast(`Loaded ${found.technique ? found.technique + ': ' : ''}${found.title}`);
+      translate();
+      return true;
+    }
+    return false;
+  }
+
+  const curParams = new URLSearchParams(location.hash.split('?')[1] || '');
+  const urlTtp = curParams.get('ttp') || curParams.get('technique');
+
   if (!state.presets.length) {
     try {
       state.presets = await api('GET', '/api/rules/presets');
-      if (state.presets.length && !studioYaml.value.trim()) {
+      if (urlTtp) {
+        loadPreset(urlTtp);
+      } else if (state.presets.length && !studioYaml.value.trim()) {
         studioYaml.value = state.presets[0].yaml;
       }
     } catch (_) {}
+  } else if (urlTtp) {
+    loadPreset(urlTtp);
   }
 
   function updateOutput() {
@@ -2808,15 +3178,16 @@ async function renderStudio() {
   }
   renderStudio._wired = true;
 
+  const ttpSel = $('studioTtpSelect');
+  if (ttpSel) {
+    ttpSel.addEventListener('change', () => {
+      if (ttpSel.value) loadPreset(ttpSel.value);
+    });
+  }
+
   document.querySelectorAll('[data-preset]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const pId = btn.dataset.preset;
-      const found = state.presets.find(p => p.id === pId || p.slug === pId);
-      if (found) {
-        studioYaml.value = found.yaml;
-        toast(`Loaded preset: ${found.title}`);
-        translate();
-      }
+      loadPreset(btn.dataset.preset);
     });
   });
 
@@ -2987,8 +3358,14 @@ document.addEventListener('click', e => {
   const x = e.target.closest('[data-export]'); if (x) exportActivity(x.dataset.export);
 });
 
-function showAgentModal(tid) {
-  $('agentRunId').textContent = 'Run ID: ' + (tid || 'trg-active');
+function showAgentModal(tid, targetTechnique, targetName) {
+  $('agentRunId').textContent = 'Run ID: ' + (tid || 'trg-active') + (targetTechnique ? ' · Target: ' + targetTechnique : '');
+  const stepStatus = $('agentStepStatus');
+  if (stepStatus) {
+    stepStatus.textContent = targetTechnique
+      ? `Synthesizing Sigma detection for ${targetTechnique}${targetName ? ' (' + targetName + ')' : ''}...`
+      : 'Synthesizing Sigma detection & multi-backend queries...';
+  }
   $('agentModal').hidden = false;
 }
 function hideAgentModal() {
@@ -3001,7 +3378,7 @@ $('agentModalViewRunsBtn').addEventListener('click', () => {
   go('runs');
 });
 
-async function requestProposal() {
+async function requestProposal(targetTechnique, targetName) {
   const btns = document.querySelectorAll('[data-request]');
   btns.forEach(b => {
     b.disabled = true;
@@ -3009,10 +3386,11 @@ async function requestProposal() {
     b.innerHTML = '<svg class="ic spin" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5" fill="none" stroke="currentColor" stroke-width="2"/></svg> Dispatching...';
   });
   try {
-    const r = await api('POST', '/api/trigger/propose');
+    const payload = targetTechnique ? { technique: targetTechnique } : undefined;
+    const r = await api('POST', '/api/trigger/propose', payload);
     if (r.triggered || r.status === 'sent' || r.trigger_id) {
-      toast('Agent run started (' + (r.trigger_id || 'active') + ')');
-      showAgentModal(r.trigger_id);
+      toast('Agent run started' + (targetTechnique ? ' for ' + targetTechnique : '') + ' (' + (r.trigger_id || 'active') + ')');
+      showAgentModal(r.trigger_id, targetTechnique, targetName);
     } else {
       toast('Agent did not start: ' + (r.detail || 'Webhook returned error'), false);
     }
@@ -3133,6 +3511,11 @@ $('lockBtn').addEventListener('click', () => {
   try { sessionStorage.removeItem('demoMode'); } catch (_) {}
   showGate('');
 });
+const tBtn = $('themeBtn');
+if (tBtn) tBtn.addEventListener('click', toggleTheme);
+const mBtn = $('mobileThemeBtn');
+if (mBtn) mBtn.addEventListener('click', toggleTheme);
+updateThemeIcon();
 const gDemoBtn = $('gateDemoBtn');
 if (gDemoBtn) gDemoBtn.addEventListener('click', () => {
   try { sessionStorage.setItem('demoMode', '1'); } catch (_) {}

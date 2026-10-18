@@ -346,5 +346,173 @@ tags:
   - attack.t1059.001
 level: high
 """
+    },
+    "t1053-002": {
+        "id": "t1053-002",
+        "title": "At Command Used for Scheduled Job Creation",
+        "technique": "T1053.002",
+        "slug": "at_command_job_creation",
+        "yaml": """title: At Command Used for Scheduled Job Creation
+id: e8a123bc-5d4e-4f3a-8b1c-9e2d3f4a5b6c
+status: experimental
+description: Detects the execution of the legacy Windows at.exe utility to schedule tasks
+author: Sithum (Ctum0)
+date: 2026-10-18
+references:
+  - https://attack.mitre.org/techniques/T1053/002/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\\at.exe'
+    CommandLine|contains:
+      - ' /create '
+      - ' -create '
+  condition: selection
+falsepositives:
+  - Legacy administrative scripts scheduling maintenance jobs
+tags:
+  - attack.persistence
+  - attack.t1053.002
+level: high
+"""
+    },
+    "t1685-005": {
+        "id": "t1685-005",
+        "title": "Clear Windows Event Logs via Wevtutil",
+        "technique": "T1685.005",
+        "slug": "clear_windows_event_logs",
+        "yaml": """title: Clear Windows Event Logs via Wevtutil
+id: f9b234cd-6e5f-5a4b-9c2d-0e3f4a5b6c7d
+status: production
+description: Detects attempts to clear Windows event logs using wevtutil command-line utility
+author: Sithum (Ctum0)
+date: 2026-10-18
+references:
+  - https://attack.mitre.org/techniques/T1685/005/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\\wevtutil.exe'
+    CommandLine|contains:
+      - ' cl '
+      - ' clear-log '
+  condition: selection
+falsepositives:
+  - Routine system maintenance scripts by authorized administrators
+tags:
+  - attack.defense_evasion
+  - attack.t1685.005
+level: high
+"""
+    },
+    "t1543-003": {
+        "id": "t1543-003",
+        "title": "Suspicious Windows Service Creation via SC.exe",
+        "technique": "T1543.003",
+        "slug": "suspicious_service_creation",
+        "yaml": """title: Suspicious Windows Service Creation via SC.exe
+id: a0c345de-7f6a-6b5c-0d3e-1f4a5b6c7d8e
+status: test
+description: Detects new Windows service creation executing binaries from suspicious temporary or writable paths
+author: Sithum (Ctum0)
+date: 2026-10-18
+references:
+  - https://attack.mitre.org/techniques/T1543/003/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\\sc.exe'
+    CommandLine|contains:
+      - ' create '
+  selection_path:
+    CommandLine|contains:
+      - '\\AppData\\'
+      - '\\Temp\\'
+      - '\\Users\\Public\\'
+      - 'C:\\Temp\\'
+  condition: selection and selection_path
+falsepositives:
+  - Software installers executing from user Temp directories
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1543.003
+level: high
+"""
+    },
+    "t1555-003": {
+        "id": "t1555-003",
+        "title": "Web Browser Credential Store Database Access",
+        "technique": "T1555.003",
+        "slug": "browser_credential_store_access",
+        "yaml": """title: Web Browser Credential Store Database Access
+id: b1d456ef-8a7b-7c6d-1e4f-2a5b6c7d8e9f
+status: experimental
+description: Detects suspicious process access referencing web browser stored credential files (Login Data, logins.json, key4.db)
+author: Sithum (Ctum0)
+date: 2026-10-18
+references:
+  - https://attack.mitre.org/techniques/T1555/003/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    CommandLine|contains:
+      - 'Login Data'
+      - 'logins.json'
+      - 'key4.db'
+      - 'vaultcmd'
+  filter:
+    Image|endswith:
+      - '\\chrome.exe'
+      - '\\msedge.exe'
+      - '\\firefox.exe'
+  condition: selection and not filter
+falsepositives:
+  - Enterprise browser profile backup scripts
+tags:
+  - attack.credential_access
+  - attack.t1555.003
+level: high
+"""
+    },
+    "t1021-001": {
+        "id": "t1021-001",
+        "title": "Remote Desktop Protocol (RDP) Lateral Execution",
+        "technique": "T1021.001",
+        "slug": "rdp_lateral_execution",
+        "yaml": """title: Remote Desktop Protocol (RDP) Lateral Execution
+id: c2e567fa-9b8c-8d7e-2f5a-3b6c7d8e9f0a
+status: experimental
+description: Detects command-line invocation of mstsc.exe with specific remote admin targeting
+author: Sithum (Ctum0)
+date: 2026-10-18
+references:
+  - https://attack.mitre.org/techniques/T1021/001/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\\mstsc.exe'
+    CommandLine|contains:
+      - ' /v:'
+      - ' /admin'
+      - ' /shadow:'
+  condition: selection
+falsepositives:
+  - System administrators managing remote endpoints via RDP
+tags:
+  - attack.lateral_movement
+  - attack.t1021.001
+level: medium
+"""
     }
 }
