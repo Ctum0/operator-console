@@ -51,7 +51,7 @@ in `localStorage`. **Lock** in the header forgets it.
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `CONSOLE_TOKEN` | yes | Bearer token for every `/api/*` call |
-| `GITHUB_TOKEN` | for merges | Fine-grained PAT on `REPO`: **Pull requests: Read and write** (merge), **Actions: Read** (CI health), **Administration: Read** (self-hosted runner liveness; without it the runner row shows "unknown") |
+| `GITHUB_TOKEN` | for control plane | Fine-grained PAT on `REPO`: **Pull requests: Read and write** (merges & PR creation), **Contents: Read and write** (rule submission & branch creation), **Actions: Read and write** (CI health & workflow dispatch for validation), **Administration: Read** (self-hosted runner liveness; without it the runner row shows "unknown") |
 | `REPO` | no | Default `Ctum0/detection-platform` |
 | `N8N_PROPOSE_WEBHOOK` | for triggers | n8n webhook started by "Request proposal" |
 | `N8N_WEBHOOK_SECRET` | no | Sent as `X-Webhook-Secret` on every trigger so the n8n webhook can reject anyone else. Must match the n8n Header Auth credential |
@@ -79,7 +79,7 @@ Secrets come from the environment only and are never written to logs.
 
 | File | Contents |
 | --- | --- |
-| `proposals.json` | Proposals with notes and validation evidence. Created with one sample entry on first boot |
+| `proposals.json` | Proposals with notes, origin, and validation evidence. Created with one sample entry on first boot |
 | `activity.json` | Append-only audit log, capped at 2000 entries |
 | `triggers.json` | Proposal-cycle trigger records, last 200 |
 | `ratelimit.json` | Registration rate limiter, so a restart does not reset it |
@@ -93,22 +93,28 @@ clients keep working.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/proposals` | `{proposals, total, counts}`. With no query params it returns every proposal. Filters: `status` (comma-separated), `q` (search title, technique, reasoning), `limit` (1–500), `offset` |
+| GET | `/api/proposals` | `{proposals, total, counts}`. Filters: `status`, `origin` (`ai` \| `human`), `q`, `limit`, `offset` |
 | GET | `/api/proposals/{id}` | One proposal, 404 if unknown |
-| POST | `/api/proposals` | Register (agent). 201. Idempotent per PR number. Rate-limited to 1 new proposal per technique per 10 min. Optional `trigger_id` links it to a trigger |
+| POST | `/api/proposals` | Register (agent or human). 201. Idempotent per PR number. Rate-limited to 1 new proposal per technique per 10 min |
+| POST | `/api/rules/validate` | Validate Sigma YAML syntax and logsource mapping locally before submission |
+| POST | `/api/rules/submit` | Submit Sigma rule: creates branch `rule/<slug>`, commits to `detections/sigma/`, opens PR, and registers proposal with `origin: human` |
+| GET | `/api/proposals/{id}/deployment-status` | Probe GitHub Actions workflow runs for `convert-deploy` and `deploy-wazuh` on main |
+| POST | `/api/proposals/{id}/run-validation` | Dispatch `attack-test.yml` workflow on GitHub Actions for this proposal |
+| GET | `/api/proposals/{id}/artifacts` | Retrieve multi-backend detection artifacts (`sigma_yaml`, `wazuh_xml`, `splunk_spl`) |
+| GET | `/api/rules/{identifier}/artifacts` | Retrieve multi-backend artifacts by slug or title |
 | POST | `/api/proposals/{id}/approve` | 202, merge runs async behind the PR-open + CI gate. From `pending` or `merge_failed` |
 | POST | `/api/proposals/{id}/retry` | 202, same gate. From `merge_failed` only |
 | POST | `/api/proposals/{id}/reject` | Body `{"reason": "..."}`. From `pending` or `merge_failed` |
 | POST | `/api/proposals/{id}/reopen` | Undo a rejection: `rejected` → `pending`. The old reason stays in the activity log |
-| DELETE | `/api/proposals/{id}` | Remove a proposal that never shipped (`pending`, `rejected`, `merge_failed`). Merged and validated proposals are kept for the audit trail |
+| DELETE | `/api/proposals/{id}` | Remove a proposal that never shipped (`pending`, `rejected`, `merge_failed`) |
 | POST | `/api/proposals/{id}/notes` | 201. Body `{"text", "author"?}`. Append-only, any status |
-| POST | `/api/proposals/{id}/validated` | Body `{"rule_id", "attack", "fired_at", "evidence_url"?}`. From `merged` only. `fired_at` is ISO 8601, not in the future, not before the merge |
-| GET | `/api/health/pipeline` | `{components: [{name, status, level, detail}]}`, cached 60 s. `level` is `ok`, `warn`, `bad` or `unknown` |
-| GET | `/api/coverage` | `{columns, rows, source, fetched_at, stale}`. Rows are arrays. `sample: true` when no good copy has ever been fetched |
-| GET | `/api/activity` | `{activity, total}`, newest first. Filters: `limit`, `offset`, `actor`, `action` (prefix, e.g. `proposal.`), `proposal_id` |
-| GET | `/api/activity/export` | Full audit trail as a download, oldest first. `?format=csv` or `json` |
+| POST | `/api/proposals/{id}/validated` | Body `{"rule_id", "attack", "fired_at", "evidence_url"?}`. From `merged` only |
+| GET | `/api/health/pipeline` | `{components: [{name, status, level, detail}]}`, cached 60 s |
+| GET | `/api/coverage` | `{columns, rows, source, fetched_at, stale}` |
+| GET | `/api/activity` | `{activity, total}`, newest first |
+| GET | `/api/activity/export` | Full audit trail as a download (`?format=csv` or `json`) |
 | POST | `/api/trigger/propose` | 202. Fires the n8n webhook and returns `{triggered, detail, trigger_id, status}` |
-| GET | `/api/triggers` | `{triggers, total}`, newest first, `?limit=` up to 200 |
+| GET | `/api/triggers` | `{triggers, total}`, newest first |
 | POST | `/api/triggers/{id}/result` | n8n callback. Body `{"status": "succeeded" \| "failed", "detail"?, "proposal_id"?}` |
 | GET | `/api/version` | Version and build info |
 | GET | `/healthz` | Container healthcheck |

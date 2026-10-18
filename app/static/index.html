@@ -555,6 +555,7 @@ html.locked .gate[hidden] { display:grid !important; }
         <div class="nav-label">Operations</div>
         <a href="#/overview" data-nav="overview"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="6" rx="1.2"/><rect x="9" y="2" width="5" height="4" rx="1.2"/><rect x="9" y="8" width="5" height="6" rx="1.2"/><rect x="2" y="10" width="5" height="4" rx="1.2"/></svg>Overview</a>
         <a href="#/queue" data-nav="queue"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2-6h8l2 6v4H2z"/><path d="M2 9.5h3.5l1 1.5h3l1-1.5H14"/></svg>Review queue<span class="count" id="navCount" hidden></span></a>
+        <a href="#/submit" data-nav="submit"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v11M2.5 8h11"/></svg>Submit rule</a>
         <a href="#/coverage" data-nav="coverage"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r=".7"/></svg>Coverage</a>
         <a href="#/runs" data-nav="runs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9h.01M10 9h.01M1.5 8.5v2M14.5 8.5v2"/></svg>Agent runs</a>
         <a href="#/activity" data-nav="activity"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Activity</a>
@@ -702,6 +703,51 @@ html.locked .gate[hidden] { display:grid !important; }
       </div>
       <div class="hgrid" id="healthGrid"><div class="card hcard"><div class="skel skel-line"></div><div class="skel skel-line"></div></div></div>
     </section>
+
+    <!-- SUBMIT RULE -->
+    <section class="page view" data-view="submit" aria-labelledby="tSubmit" hidden>
+      <div class="page-head">
+        <div><h1 id="tSubmit">Submit Detection Rule</h1><p>Author and submit a new Sigma rule directly to the repository as a GitHub PR. It enters the review queue for automated CI validation and CD deployment.</p></div>
+      </div>
+      <div style="display:grid; grid-template-columns: minmax(0,1fr) 340px; gap: 20px; align-items:start;">
+        <div class="card" style="padding: 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+            <label for="subYaml" style="font-weight:600; font-size:13.5px; color:var(--ink);">Sigma Rule (YAML)</label>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;" title="Upload a .yml file">
+              <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 12V3M4 6.5 8 2.5l4 4M2 13.5h12"/></svg>
+              <span>Upload .yml</span>
+              <input type="file" id="subFile" accept=".yml,.yaml" style="display:none">
+            </label>
+          </div>
+          <textarea class="input mono" id="subYaml" rows="18" style="height:360px; font-size:12px; line-height:1.45;" placeholder="title: Suspicious Process Execution&#10;logsource:&#10;    category: process_creation&#10;    product: windows&#10;detection:&#10;    selection:&#10;        Image|endswith: '\powershell.exe'&#10;    condition: selection&#10;tags:&#10;    - attack.execution&#10;    - attack.t1059.001"></textarea>
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <button class="btn btn-ghost" type="button" id="subValidateBtn"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M5.5 8l2 2 3.5-4"/></svg>Validate Rule</button>
+            <button class="btn btn-primary" type="button" id="subSubmitBtn"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2-6h8l2 6v4H2z"/><path d="M8 3.5v9M3.5 8h9"/></svg>Submit as PR</button>
+          </div>
+          <div id="subResult" style="margin-top:16px;" hidden></div>
+        </div>
+
+        <div class="card" style="padding: 20px; display:flex; flex-direction:column; gap:14px;">
+          <h2 style="font-size:14px; font-weight:600; color:var(--ink);">Metadata &amp; Scope</h2>
+          <div class="field">
+            <label for="subSlug">Rule Slug <small>(filename identifier)</small></label>
+            <input class="input mono" id="subSlug" placeholder="e.g. powershell_dns_recon" maxlength="64">
+          </div>
+          <div class="field">
+            <label for="subAuthor">Submitted by</label>
+            <input class="input" id="subAuthor" placeholder="operator" value="operator" maxlength="64">
+          </div>
+          <div class="field">
+            <label for="subReason">Why this rule? <small>(PR body)</small></label>
+            <textarea class="input" id="subReason" rows="4" placeholder="Observed in recent threat campaign, coverage gap for T1059.001, etc."></textarea>
+          </div>
+          <div class="callout" style="font-size:12px; margin-top:auto;">
+            <svg class="ic ic-sm" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11h.01"/></svg>
+            <div>Submitting creates branch <code>rule/&lt;slug&gt;</code>, commits to <code>detections/sigma/</code>, and opens a GitHub PR with label <code>feat(sigma)</code>.</div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 <div class="scrim" id="scrim"></div>
@@ -726,10 +772,12 @@ html.locked .gate[hidden] { display:grid !important; }
 'use strict';
 /* ================= state ================= */
 const POLL_MS = 15000, FAST_POLL_MS = 2500;
-const VIEWS = ['overview', 'queue', 'coverage', 'runs', 'activity', 'health'];
+const VIEWS = ['overview', 'queue', 'submit', 'coverage', 'runs', 'activity', 'health'];
 const TABS = [
   ['action', 'Needs action', ['pending', 'merge_failed', 'merging']],
   ['all', 'All', null],
+  ['human', 'Human', null],
+  ['ai', 'AI', null],
   ['merged', 'Merged', ['merged']],
   ['validated', 'Validated', ['validated']],
   ['rejected', 'Rejected', ['rejected']],
@@ -739,6 +787,7 @@ const S = {
   proposals: [], counts: {}, health: null, coverage: null, triggers: null, activity: null,
   chartDays: 14, live: true, covQ: '', covStatus: 'all', covOpen: new Set(), actActor: '', actLimit: 60,
   drawer: {}, yamlOpen: new Set(), armed: {}, busy: new Set(), drafts: {},
+  artTab: {}, artCache: {}, depStatus: {},
   detailSig: '', timer: null, booted: false,
 };
 try { S.tab = localStorage.getItem('consoleTab') || 'action'; } catch (_) {}
@@ -773,6 +822,7 @@ const ICONS = {
   ext: '<path d="M6 3.5h6.5V10M12.5 3.5l-8 8"/>',
   back: '<path d="M10 3.5 5.5 8l4.5 4.5"/>',
   gear: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>',
+  user: '<circle cx="8" cy="5" r="3"/><path d="M2.5 14a5.5 5.5 0 0 1 11 0"/>',
 };
 function icon(name, cls = '') { return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 16 16" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 
@@ -880,7 +930,7 @@ function parseHash() {
   return { view, sel: view === 'queue' && parts[1] ? decodeURIComponent(parts[1]) : null };
 }
 function go(view, sel) { location.hash = '#/' + view + (sel ? '/' + encodeURIComponent(sel) : ''); }
-const TITLES = { overview: 'Overview', queue: 'Review queue', coverage: 'Coverage', runs: 'Agent runs', activity: 'Activity', health: 'Pipeline health' };
+const TITLES = { overview: 'Overview', queue: 'Review queue', submit: 'Submit rule', coverage: 'Coverage', runs: 'Agent runs', activity: 'Activity', health: 'Pipeline health' };
 function backLabel() {
   const prev = (S.prevRoute || '').replace(/^#\/?/, '').split('/')[0];
   return prev && prev !== 'queue' && TITLES[prev] ? 'Back to ' + TITLES[prev] : 'All proposals';
@@ -895,7 +945,7 @@ function applyRoute() {
   document.querySelectorAll('[data-nav]').forEach(a => {
     if (a.dataset.nav === S.view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
-  document.title = TITLES[S.view] + ' · Operator Console';
+  document.title = (TITLES[S.view] || 'Console') + ' · Operator Console';
   closeNav();
   if (changed) { $('main').scrollTop = 0; window.scrollTo(0, 0); }
   renderView();
@@ -904,7 +954,7 @@ window.addEventListener('hashchange', applyRoute);
 
 function renderView() {
   if (!S.booted) return;
-  ({ overview: renderOverview, queue: renderQueue, coverage: renderCoverage, runs: renderRuns, activity: renderActivity, health: renderHealthView })[S.view]();
+  ({ overview: renderOverview, queue: renderQueue, submit: renderSubmitView, coverage: renderCoverage, runs: renderRuns, activity: renderActivity, health: renderHealthView })[S.view]();
 }
 function renderShell() {
   const c = S.counts, need = (c.pending || 0) + (c.merge_failed || 0);
@@ -1041,15 +1091,24 @@ window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTi
 
 /* ================= queue ================= */
 function filtered() {
-  const tab = TABS.find(t => t[0] === S.tab);
+  const tab = TABS.find(t => t[0] === S.tab) || TABS[0];
   const needle = S.q.toLowerCase();
-  return S.proposals.filter(p => (!tab[2] || tab[2].includes(p.status)) &&
-    (!needle || ['title', 'technique', 'reasoning'].some(f => String(p[f] || '').toLowerCase().includes(needle))));
+  const matchQ = p => (!needle || ['title', 'technique', 'reasoning', 'submitted_by', 'slug'].some(f => String(p[f] || '').toLowerCase().includes(needle)));
+  return S.proposals.filter(p => {
+    if (tab[0] === 'human') return (p.origin === 'human') && matchQ(p);
+    if (tab[0] === 'ai') return (p.origin === 'ai' || !p.origin) && matchQ(p);
+    return (!tab[2] || tab[2].includes(p.status)) && matchQ(p);
+  });
 }
 function renderTabs() {
   const c = S.counts;
+  const humanCount = S.proposals.filter(p => p.origin === 'human').length;
+  const aiCount = S.proposals.filter(p => p.origin === 'ai' || !p.origin).length;
   $('tabs').innerHTML = TABS.map(([key, label, sts]) => {
-    const n = sts ? sts.reduce((a, s) => a + (c[s] || 0), 0) : Object.values(c).reduce((a, b) => a + b, 0);
+    let n;
+    if (key === 'human') n = humanCount;
+    else if (key === 'ai') n = aiCount;
+    else n = sts ? sts.reduce((a, s) => a + (c[s] || 0), 0) : Object.values(c).reduce((a, b) => a + b, 0);
     return `<button type="button" role="tab" data-tab="${key}" aria-selected="${S.tab === key}">${label}<span class="n">${n}</span></button>`;
   }).join('');
 }
@@ -1058,10 +1117,15 @@ function renderQueue() {
   renderTabs();
   const list = filtered();
   if (!S.sel && isDesktop() && list.length) S.sel = list[0].id;
-  $('qitems').innerHTML = list.length ? list.map(p => `<button class="qitem" type="button" data-sel="${esc(p.id)}" aria-current="${p.id === S.sel}">
-      <div class="l1"><span class="chip">${esc(p.technique)}</span>${statusPill(p)}<span class="age">${esc(ago(p.created_at))}</span></div>
+  $('qitems').innerHTML = list.length ? list.map(p => {
+    const originPill = p.origin === 'human'
+      ? `<span class="pill muted" style="font-size:10px;padding:1px 5px;" title="Human submission">${icon('user', 'ic-sm')}Human</span>`
+      : `<span class="pill muted" style="font-size:10px;padding:1px 5px;" title="AI proposal">${icon('bot', 'ic-sm')}AI</span>`;
+    return `<button class="qitem" type="button" data-sel="${esc(p.id)}" aria-current="${p.id === S.sel}">
+      <div class="l1"><span class="chip">${esc(p.technique)}</span>${originPill}${statusPill(p)}<span class="age">${esc(ago(p.created_at))}</span></div>
       <div class="title">${esc(p.title)}</div>
-      <div class="l3">${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}${Array.isArray(p.notes) && p.notes.length ? `<span>·</span>${icon('note', 'ic-sm')}${p.notes.length}` : ''}</div></button>`).join('')
+      <div class="l3">${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}${Array.isArray(p.notes) && p.notes.length ? `<span>·</span>${icon('note', 'ic-sm')}${p.notes.length}` : ''}</div></button>`;
+  }).join('')
     : (S.q ? emptyHtml('search', `No proposals match “${esc(S.q)}”.`, 'Try a technique ID such as T1059.')
       : S.tab === 'action' ? emptyHtml('inbox', "You're all caught up.", 'Nothing is waiting for a decision.', `<br><button class="btn btn-ghost" type="button" data-request>${icon('plus')}Request a proposal</button>`)
       : emptyHtml('inbox', 'Nothing here yet.', 'Proposals appear here as they move through review.'));
@@ -1099,6 +1163,30 @@ function steps(p) {
   return `<div class="steps" aria-label="Lifecycle">${step('done', 1, 'Proposed')}${line(true)}${s2}${s3}</div>`;
 }
 function draft(key, fb = '') { return key in S.drafts ? S.drafts[key] : fb; }
+async function loadArtifacts(id) {
+  if (S.artCache[id]) return;
+  try {
+    const data = await api('GET', `/api/proposals/${encodeURIComponent(id)}/artifacts`);
+    S.artCache[id] = data;
+    renderDetail(true);
+  } catch (err) {
+    S.artCache[id] = { error: err.message };
+    renderDetail(true);
+  }
+}
+
+async function loadDeploymentStatus(id) {
+  if (S.depStatus[id]) return;
+  try {
+    const data = await api('GET', `/api/proposals/${encodeURIComponent(id)}/deployment-status`);
+    S.depStatus[id] = data;
+    renderDetail(true);
+  } catch (err) {
+    S.depStatus[id] = { status: 'unknown' };
+    renderDetail(true);
+  }
+}
+
 function detailHtml(p) {
   const id = esc(p.id), busy = S.busy.has(p.id) ? ' disabled' : '', d = S.drawer[p.id];
   const pr = safeUrl(p.pr_url);
@@ -1141,10 +1229,12 @@ function detailHtml(p) {
   }
   const notes = Array.isArray(p.notes) ? p.notes : [];
   const expanded = S.yamlOpen.has(p.id);
-  const lines = String(p.sigma_yaml || '').trimEnd().split('\n').length;
+
   let foot = '';
   const delArmed = ('del:' + p.id) in S.armed;
   const delBtn = `<button class="btn btn-reject" type="button" data-act="delete" data-id="${id}"${busy} title="Remove this proposal from the console">${icon(delArmed ? 'alert' : 'x')}${delArmed ? 'Confirm delete' : 'Delete'}</button>`;
+  const runValBtn = `<button class="btn btn-ghost" type="button" data-act="run-val" data-id="${id}"${busy} title="Dispatch CI validation workflow on GitHub Actions">${icon('pulse')}Run validation</button>`;
+
   switch (p.status) {
     case 'pending': {
       const armed = p.id in S.armed;
@@ -1162,25 +1252,75 @@ function detailHtml(p) {
       foot = '<span class="hint"><span class="dot accent pulse"></span>Checking the PR and its CI, then merging…</span>'; break;
     case 'merged':
       foot = `<span class="hint">Merged. The repo converts it to a Wazuh rule and deploys it; once that run finishes, fire the attack and record the alert.</span>
+        ${runValBtn}
         <button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>${icon('shield')}Record validation</button>`; break;
-    case 'validated': foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM. Nothing left to do.</span>`; break;
+    case 'validated':
+      foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM.</span>${runValBtn}`; break;
     case 'rejected':
       foot = `<span class="hint">Rejected. Reopen it to review again, or delete it.</span>${delBtn}
         <button class="btn btn-ghost" type="button" data-act="reopen" data-id="${id}"${busy}>${icon('retry')}Reopen</button>`; break;
   }
+
+  const originBadge = p.origin === 'human'
+    ? `<span class="pill muted" title="Submitted by human">${icon('user', 'ic-sm')}Human (${esc(p.submitted_by || 'operator')})</span>`
+    : `<span class="pill muted" title="AI-generated proposal">${icon('bot', 'ic-sm')}AI proposal</span>`;
+
+  let depPill = '';
+  if (p.status === 'merged' || p.status === 'validated') {
+    const dep = S.depStatus[p.id];
+    if (!dep) {
+      depPill = `<span class="pill muted"><span class="dot"></span>Checking deploy...</span>`;
+      loadDeploymentStatus(p.id);
+    } else {
+      const st = dep.status || 'unknown';
+      const cls = st === 'deployed' ? 'ok' : (st === 'converting' || st === 'deploying' ? 'accent' : (st === 'failed' ? 'bad' : 'muted'));
+      const pulse = st === 'converting' || st === 'deploying' ? ' pulse' : '';
+      depPill = `<span class="pill ${cls}"><span class="dot${pulse}"></span>${esc(sentence(st))}</span>`;
+    }
+  }
+
+  // Multi-backend artifacts
+  const artTab = S.artTab[p.id] || 'sigma';
+  if (!S.artCache[p.id]) {
+    loadArtifacts(p.id);
+  }
+  const art = S.artCache[p.id] || { sigma_yaml: p.sigma_yaml || '', wazuh_xml: '', splunk_spl: '' };
+  let activeCode = '';
+  if (artTab === 'sigma') {
+    activeCode = yamlHighlight(art.sigma_yaml || p.sigma_yaml || '');
+  } else if (artTab === 'wazuh') {
+    activeCode = esc(art.wazuh_xml || (art.error ? 'Error loading: ' + art.error : 'No Wazuh XML generated yet (created on convert-deploy).'));
+  } else if (artTab === 'splunk') {
+    activeCode = esc(art.splunk_spl || (art.error ? 'Error loading: ' + art.error : 'No Splunk SPL query generated yet.'));
+  }
+
   return `<div class="qdetail-scroll" data-id="${id}">
     <button class="btn btn-ghost btn-sm back" type="button" data-act="back">${icon('back')}${esc(backLabel())}</button>
     <div class="d-head"><div class="grow"><span class="chip">${esc(p.technique)}</span><h2>${esc(p.title)}</h2>
       <div class="d-meta">${pr ? `<a href="${esc(pr)}" target="_blank" rel="noopener noreferrer">${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}${icon('ext', 'ic-sm')}</a>` : `<span>${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}</span>`}
-        <span>${icon('branch', 'ic-sm')}<code>${esc(p.branch)}</code></span><span title="${esc(fmtTs(p.created_at))}">${icon('clock', 'ic-sm')}Proposed ${esc(ago(p.created_at))}</span></div></div>
+        <span>${icon('branch', 'ic-sm')}<code>${esc(p.branch)}</code></span>
+        ${originBadge}
+        ${depPill}
+        <span title="${esc(fmtTs(p.created_at))}">${icon('clock', 'ic-sm')}Proposed ${esc(ago(p.created_at))}</span></div></div>
       ${statusPill(p)}</div>
     ${steps(p)}
     ${callout}${form}
-    <div class="sec"><div class="sec-title">Why the agent proposed it</div><p class="rationale">${esc(p.reasoning)}</p></div>
-    <div class="sec"><div class="sec-title">Sigma rule <span class="n">${lines} lines</span>
-      <span class="acts"><button class="link-btn" type="button" data-act="copy" data-id="${id}">${icon('copy', 'ic-sm')}<span>copy</span></button>
-      <button class="link-btn" type="button" data-act="yaml" data-id="${id}" aria-expanded="${expanded}">${icon(expanded ? 'collapse' : 'expand', 'ic-sm')}<span>${expanded ? 'collapse' : 'expand'}</span></button></span></div>
-      <pre class="code${expanded ? ' expanded' : ''}" id="yaml-${id}">${yamlHighlight(p.sigma_yaml || '')}</pre></div>
+    <div class="sec"><div class="sec-title">Why this rule was proposed</div><p class="rationale">${esc(p.reasoning)}</p></div>
+    <div class="sec">
+      <div class="sec-title" style="flex-wrap:wrap; gap:10px;">
+        <span>Multi-Backend Artifacts</span>
+        <div class="seg" role="tablist" style="margin-left:0;">
+          <button type="button" role="tab" data-arttab="sigma" data-id="${id}" aria-selected="${artTab === 'sigma'}">Sigma (YAML)</button>
+          <button type="button" role="tab" data-arttab="wazuh" data-id="${id}" aria-selected="${artTab === 'wazuh'}">Wazuh XML</button>
+          <button type="button" role="tab" data-arttab="splunk" data-id="${id}" aria-selected="${artTab === 'splunk'}">Splunk SPL</button>
+        </div>
+        <span class="acts">
+          <button class="link-btn" type="button" data-act="copy-art" data-id="${id}">${icon('copy', 'ic-sm')}<span>copy</span></button>
+          <button class="link-btn" type="button" data-act="yaml" data-id="${id}" aria-expanded="${expanded}">${icon(expanded ? 'collapse' : 'expand', 'ic-sm')}<span>${expanded ? 'collapse' : 'expand'}</span></button>
+        </span>
+      </div>
+      <pre class="code${expanded ? ' expanded' : ''}" id="code-${id}">${activeCode}</pre>
+    </div>
     <div class="sec"><div class="sec-title">Notes${notes.length ? ` <span class="n">${notes.length}</span>` : ''}</div>
       ${notes.length ? '<div class="notes">' + notes.map(n => `<div class="note"><span class="avatar" aria-hidden="true">${esc(String(n.author || '?').slice(0, 2))}</span>
         <div><div class="meta"><b>${esc(n.author)}</b> · <span title="${esc(fmtTs(n.ts))}">${esc(ago(n.ts))}</span></div><div class="text">${esc(n.text)}</div></div></div>`).join('') + '</div>' : ''}
@@ -1428,11 +1568,123 @@ const actions = {
     try { await navigator.clipboard.writeText(p ? p.sigma_yaml : ''); label.textContent = 'copied'; } catch (_) { label.textContent = 'failed'; }
     setTimeout(() => { label.textContent = 'copy'; }, 1500);
   },
+  async 'copy-art'(id, el) {
+    const p = findP(id);
+    const artTab = S.artTab[id] || 'sigma';
+    const art = S.artCache[id] || { sigma_yaml: (p ? p.sigma_yaml : ''), wazuh_xml: '', splunk_spl: '' };
+    const text = artTab === 'sigma' ? (art.sigma_yaml || (p ? p.sigma_yaml : '')) : (artTab === 'wazuh' ? (art.wazuh_xml || '') : (art.splunk_spl || ''));
+    const label = el.querySelector('span') || el;
+    try { await navigator.clipboard.writeText(text); label.textContent = 'copied'; } catch (_) { label.textContent = 'failed'; }
+    setTimeout(() => { label.textContent = 'copy'; }, 1500);
+  },
+  async 'run-val'(id) {
+    await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/run-validation`), 'Validation workflow dispatched on GitHub Actions');
+  },
 };
 $('qdetail').addEventListener('click', e => {
+  const tabBtn = e.target.closest('[data-arttab]');
+  if (tabBtn) {
+    const id = tabBtn.dataset.id;
+    const tab = tabBtn.dataset.arttab;
+    S.artTab[id] = tab;
+    renderDetail(true);
+    return;
+  }
   const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
   const fn = actions[el.dataset.act]; if (fn) fn(el.dataset.id, el);
 });
+
+/* ================= submit ================= */
+function renderSubmitView() {
+  const subFile = $('subFile');
+  const subYaml = $('subYaml');
+  const subSlug = $('subSlug');
+  const subAuthor = $('subAuthor');
+  const subReason = $('subReason');
+  const subValidateBtn = $('subValidateBtn');
+  const subSubmitBtn = $('subSubmitBtn');
+  const subResult = $('subResult');
+
+  if (renderSubmitView._wired) return;
+  renderSubmitView._wired = true;
+
+  subFile.addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      subYaml.value = text;
+      if (!subSlug.value.trim()) {
+        const base = file.name.replace(/\.(ya?ml)$/i, '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        subSlug.value = base;
+      }
+      toast('Loaded ' + file.name);
+    } catch (err) {
+      toast('Failed to read file: ' + err.message, false);
+    }
+  });
+
+  subValidateBtn.addEventListener('click', async () => {
+    const yaml = subYaml.value.trim();
+    if (!yaml) { toast('Please paste or upload a Sigma rule YAML', false); return; }
+    subValidateBtn.disabled = true;
+    subResult.hidden = false;
+    subResult.innerHTML = '<div class="skel skel-line"></div>';
+    try {
+      const res = await api('POST', '/api/rules/validate', { sigma_yaml: yaml });
+      if (res.valid) {
+        let warnHtml = '';
+        if (res.warnings && res.warnings.length) {
+          warnHtml = `<div style="margin-top:8px;color:var(--warn);font-size:12px;">Warnings:<br>` +
+            res.warnings.map(w => `• ${esc(w)}`).join('<br>') + `</div>`;
+        }
+        subResult.innerHTML = `<div class="callout ok">${icon('shield')}<div><b>Rule is valid.</b> Technique: <code>${esc(res.technique || 'unknown')}</code>, Title: <em>${esc(res.title || 'untitled')}</em>${warnHtml}</div></div>`;
+        if (!subSlug.value.trim() && res.title) {
+          subSlug.value = res.title.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 50);
+        }
+      } else {
+        subResult.innerHTML = `<div class="callout bad">${icon('alert')}<div><b>Rule invalid:</b><br>${esc(res.error || 'Syntax error')}</div></div>`;
+      }
+    } catch (err) {
+      subResult.innerHTML = `<div class="callout bad">${icon('alert')}<div><b>Validation error:</b> ${esc(err.message)}</div></div>`;
+    } finally {
+      subValidateBtn.disabled = false;
+    }
+  });
+
+  subSubmitBtn.addEventListener('click', async () => {
+    const yaml = subYaml.value.trim();
+    const slug = subSlug.value.trim();
+    const author = subAuthor.value.trim() || 'operator';
+    const reason = subReason.value.trim();
+
+    if (!yaml) { toast('Sigma YAML is required', false); return; }
+    if (!slug) { toast('Rule slug is required', false); return; }
+
+    subSubmitBtn.disabled = true;
+    subResult.hidden = false;
+    subResult.innerHTML = '<div class="skel skel-line"></div>';
+    try {
+      const res = await api('POST', '/api/rules/submit', {
+        sigma_yaml: yaml,
+        slug: slug,
+        submitted_by: author,
+        reasoning: reason,
+      });
+      toast('Rule submitted as PR #' + res.pr_number + '!');
+      subResult.innerHTML = `<div class="callout ok">${icon('check')}<div><b>PR created successfully!</b><br><a href="${esc(res.pr_url)}" target="_blank" rel="noopener noreferrer">${esc(res.pr_url)}</a><br>Proposal ID: <code>${esc(res.proposal_id)}</code> registered in review queue.</div></div>`;
+      await loadProposals();
+      renderShell();
+      setTimeout(() => {
+        go('queue', res.proposal_id);
+      }, 1500);
+    } catch (err) {
+      subResult.innerHTML = `<div class="callout bad">${icon('alert')}<div><b>Submission failed:</b> ${esc(err.message)}</div></div>`;
+    } finally {
+      subSubmitBtn.disabled = false;
+    }
+  });
+}
 $('qdetail').addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.draft; if (k) S.drafts[k] = e.target.value; });
 $('qdetail').addEventListener('keydown', e => {
   const k = e.target.dataset && e.target.dataset.draft; if (!k) return;

@@ -28,6 +28,7 @@ Robustness contract (v1.1.0):
 """
 
 import asyncio
+import base64
 import csv
 import hmac
 import io
@@ -42,6 +43,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 import fastapi
 import httpx
@@ -73,6 +76,7 @@ N8N_PROPOSE_WEBHOOK = os.getenv("N8N_PROPOSE_WEBHOOK", "")
 # that are not this console. Optional; never logged.
 N8N_WEBHOOK_SECRET = os.getenv("N8N_WEBHOOK_SECRET", "")
 COVERAGE_PATH = os.getenv("COVERAGE_PATH", "modules/detection-pipeline/docs/attack-matrix.md").lstrip("/")
+DETECTIONS_DIR = Path(os.getenv("DETECTIONS_DIR", str(Path(__file__).resolve().parent.parent.parent / "detections")))
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 PROPOSALS_FILE = DATA_DIR / "proposals.json"
 ACTIVITY_FILE = DATA_DIR / "activity.json"
@@ -616,7 +620,7 @@ _TECHNIQUE_RE = re.compile(r"^T\d{4}(?:\.\d{3})?$")
 
 
 class ProposalIn(BaseModel):
-    """Registration payload from the AI agent (n8n). Field names/types match the
+    """Registration payload from the AI agent (n8n) or human operator. Field names/types match the
     published contract exactly; constraints only reject payloads that would
     previously have been stored and then crashed later endpoints. trigger_id is
     optional: when n8n echoes back the id it received from /api/trigger/propose,
@@ -630,6 +634,7 @@ class ProposalIn(BaseModel):
     pr_number: int | None = None
     branch: str = ""
     trigger_id: str | None = None
+    origin: str = "ai"
 
     @field_validator("pr_number", mode="before")
     @classmethod
@@ -637,6 +642,24 @@ class ProposalIn(BaseModel):
         if isinstance(v, str) and v.strip().isdigit():
             return int(v.strip())
         return v
+
+    @field_validator("origin", mode="before")
+    @classmethod
+    def _coerce_origin(cls, v: Any) -> str:
+        if isinstance(v, str) and v.strip().lower() in ("ai", "human"):
+            return v.strip().lower()
+        return "ai"
+
+
+class RuleValidateIn(BaseModel):
+    sigma_yaml: str = ""
+
+
+class RuleSubmitIn(BaseModel):
+    sigma_yaml: str = ""
+    slug: str = ""
+    submitted_by: str = "operator"
+    reasoning: str = ""
 
 
 class RejectIn(BaseModel):
@@ -689,7 +712,67 @@ def _validate_proposal(payload: ProposalIn) -> list[str]:
             problems.append(f"{field} exceeds {limit} characters")
         if "\x00" in (getattr(payload, field) or ""):
             problems.append(f"{field} contains null bytes")
+    if payload.origin and payload.origin not in ("ai", "human"):
+        problems.append("origin must be 'ai' or 'human'")
     return problems
+
+
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+def _validate_sigma_yaml(raw_yaml: str) -> tuple[bool, list[str], list[str], dict[str, Any]]:
+    """Validate Sigma rule YAML locally. Returns (valid, errors, warnings, parsed)."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not (raw_yaml or "").strip():
+        return False, ["sigma_yaml must not be empty"], warnings, {}
+    try:
+        docs = list(yaml.safe_load_all(raw_yaml))
+    except Exception as exc:
+        return False, [f"YAML parse error: {exc}"], warnings, {}
+    if not docs or not isinstance(docs[0], dict):
+        return False, ["YAML content must define at least one mapping document"], warnings, {}
+    parsed = docs[0]
+    title = str(parsed.get("title") or "").strip()
+    if not title:
+        errors.append("missing or empty 'title'")
+    logsource = parsed.get("logsource")
+    if not isinstance(logsource, dict):
+        errors.append("missing or invalid 'logsource' section")
+    else:
+        prod = str(logsource.get("product") or "").lower()
+        serv = str(logsource.get("service") or "").lower()
+        cat = str(logsource.get("category") or "").lower()
+        mapped = (
+            serv in ("sysmon", "security", "system", "sshd", "auth")
+            or cat in ("process_creation", "image_load", "process_access", "file_event",
+                       "registry_add", "registry_delete", "registry_set", "registry_rename")
+            or (prod == "linux" and serv in ("sshd", "auth"))
+        )
+        if not mapped:
+            warnings.append(f"logsource (product: {prod or 'any'}, service: {serv or 'any'}, category: {cat or 'any'}) is not currently in the automated converter mapping table")
+    detection = parsed.get("detection")
+    if not isinstance(detection, dict):
+        errors.append("missing or invalid 'detection' section")
+    elif not detection.get("condition"):
+        errors.append("missing 'condition' in detection section")
+    return len(errors) == 0, errors, warnings, parsed
+
+
+def _extract_technique(parsed: dict[str, Any]) -> str:
+    """Extract ATT&CK technique code (e.g. T1059.001) from Sigma tags."""
+    tags = parsed.get("tags") or []
+    if isinstance(tags, list):
+        for t in tags:
+            s = str(t).strip().lower()
+            if s.startswith("attack.t"):
+                code = s[len("attack."):].upper()
+                if _TECHNIQUE_RE.fullmatch(code):
+                    return code
+            elif s.startswith("t") and _TECHNIQUE_RE.fullmatch(s.upper()):
+                return s.upper()
+    return "T1000"
+
 
 
 def _parse_iso(value: str) -> datetime | None:
@@ -730,19 +813,27 @@ def _rate_limit_check(technique: str, now: float) -> int:
 @app.get("/api/proposals")
 async def list_proposals(
     status: str | None = Query(None, max_length=200),
+    origin: str | None = Query(None, max_length=32),
     q: str | None = Query(None, max_length=200),
     limit: int | None = Query(None, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     """No query params = every proposal (the original contract). status takes a
-    comma-separated list; q is a case-insensitive substring match across title,
-    technique and reasoning. counts are per-status over all proposals."""
+    comma-separated list; origin filters by 'ai' or 'human'; q is a case-insensitive
+    substring match across title, technique and reasoning. counts are per-status over all proposals."""
     proposals = [p for p in _read_list(PROPOSALS_FILE) if isinstance(p, dict)]
+    for p in proposals:
+        p.setdefault("origin", "ai")
     proposals.sort(key=lambda p: str(p.get("created_at", "")), reverse=True)
     counts = {s: 0 for s in STATUSES}
     for p in proposals:
         s = str(p.get("status", ""))
         counts[s] = counts.get(s, 0) + 1
+    if origin:
+        orig = origin.strip().lower()
+        if orig not in ("ai", "human"):
+            raise HTTPException(422, f"unknown origin '{origin}'; allowed: ai, human")
+        proposals = [p for p in proposals if p.get("origin") == orig]
     if status:
         wanted = {s.strip() for s in status.split(",") if s.strip()}
         unknown = sorted(wanted - set(STATUSES))
@@ -766,6 +857,7 @@ async def get_proposal(pid: str):
     prop = _find_proposal(_read_list(PROPOSALS_FILE), pid)
     if prop is None:
         raise HTTPException(404, "proposal not found")
+    prop.setdefault("origin", "ai")
     return prop
 
 
@@ -778,6 +870,7 @@ async def create_proposal(payload: ProposalIn):
     pid: str | None = None
     updated = False
     technique_norm = payload.technique.strip().upper()
+    origin = payload.origin if payload.origin in ("ai", "human") else "ai"
     async with _file_lock:
         proposals = _read_list(PROPOSALS_FILE)
         # Idempotent re-registration keyed on PR number (agent retries / webhook
@@ -791,6 +884,7 @@ async def create_proposal(payload: ProposalIn):
                 return {"id": existing["id"], "updated": False, "created": False,
                         "status": existing.get("status")}
             existing.update({k: getattr(payload, k) for k in REQUIRED_FIELDS})
+            existing["origin"] = origin
             existing["status"] = "pending"
             existing.pop("merge_error", None)
             existing.pop("reject_reason", None)
@@ -811,6 +905,7 @@ async def create_proposal(payload: ProposalIn):
             proposals.append({
                 **{k: getattr(payload, k) for k in REQUIRED_FIELDS},
                 "id": pid,
+                "origin": origin,
                 "created_at": _now_iso(),
                 "status": "pending",
             })
@@ -1017,6 +1112,409 @@ async def mark_validated(pid: str, payload: ValidatedIn):
         _log_activity(actor, "proposal.validated",
                       f"{prop.get('technique')}: rule {rule_id} fired on {attack} at {_iso(fired)}", pid)
     return {"id": pid, "status": "validated", "validation": validation}
+
+
+# ---------------------------------------------------------------------------
+# Rule submission, deployment status & validation trigger (Control Plane)
+# ---------------------------------------------------------------------------
+@app.post("/api/rules/validate")
+async def validate_rule(payload: RuleValidateIn):
+    valid, errors, warnings, parsed = _validate_sigma_yaml(payload.sigma_yaml)
+    technique = _extract_technique(parsed) if valid else ""
+    return {
+        "valid": valid,
+        "errors": errors,
+        "warnings": warnings,
+        "title": parsed.get("title", ""),
+        "technique": technique,
+        "logsource": parsed.get("logsource", {}),
+    }
+
+
+@app.post("/api/rules/submit", status_code=201)
+async def submit_rule(payload: RuleSubmitIn):
+    slug = (payload.slug or "").strip().lower()
+    if not slug or not _SLUG_RE.fullmatch(slug) or len(slug) > 64:
+        raise HTTPException(422, "slug must be 1-64 characters of lowercase letters, digits, underscores, or hyphens")
+
+    valid, errors, warnings, parsed = _validate_sigma_yaml(payload.sigma_yaml)
+    if not valid:
+        raise HTTPException(400, f"invalid Sigma YAML: {'; '.join(errors)}")
+
+    title = str(parsed.get("title") or "").strip()
+    technique = _extract_technique(parsed)
+
+    # Duplicate check across existing proposals
+    proposals = _read_list(PROPOSALS_FILE)
+    for p in proposals:
+        if isinstance(p, dict):
+            if str(p.get("title") or "").strip().lower() == title.lower():
+                raise HTTPException(409, f"a rule with title '{title}' already exists in proposals")
+            if p.get("branch") == f"rule/{slug}" or str(p.get("slug") or "").lower() == slug:
+                raise HTTPException(409, f"a rule with slug '{slug}' already exists in proposals")
+
+    # Duplicate check in repo file system or GitHub
+    local_file = DETECTIONS_DIR / "sigma" / f"{slug}.yml"
+    if local_file.exists():
+        raise HTTPException(409, f"detections/sigma/{slug}.yml already exists in repository")
+
+    if not GITHUB_TOKEN:
+        raise HTTPException(503, "GITHUB_TOKEN not configured on server")
+
+    # Check if file exists via GitHub
+    try:
+        f_resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/contents/detections/sigma/{slug}.yml")
+        if f_resp.is_success:
+            raise HTTPException(409, f"detections/sigma/{slug}.yml already exists in repository")
+    except HTTPException:
+        raise
+    except httpx.HTTPError:
+        pass
+
+    # 1. Fetch base commit SHA of main
+    try:
+        ref_resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/git/ref/heads/main")
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"failed to connect to GitHub: {exc.__class__.__name__}")
+    if not ref_resp.is_success:
+        raise HTTPException(502, f"failed to fetch base ref main: HTTP {ref_resp.status_code}")
+    base_sha = (ref_resp.json().get("object") or {}).get("sha")
+    if not base_sha:
+        raise HTTPException(502, "base ref main object sha unavailable")
+
+    # 2. Create branch rule/{slug}
+    branch_name = f"rule/{slug}"
+    try:
+        branch_resp = await _client.post(
+            f"{GITHUB_API}/repos/{REPO}/git/refs",
+            headers=_gh_headers(),
+            json={"ref": f"refs/heads/{branch_name}", "sha": base_sha},
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"network error creating branch: {exc.__class__.__name__}")
+    if branch_resp.status_code in (422, 409):
+        raise HTTPException(409, f"branch {branch_name} already exists in repository")
+    if not branch_resp.is_success:
+        raise HTTPException(502, f"failed to create branch {branch_name}: HTTP {branch_resp.status_code}")
+
+    # 3. Commit file detections/sigma/{slug}.yml
+    content_b64 = base64.b64encode(payload.sigma_yaml.encode("utf-8")).decode("ascii")
+    try:
+        file_resp = await _client.put(
+            f"{GITHUB_API}/repos/{REPO}/contents/detections/sigma/{slug}.yml",
+            headers=_gh_headers(),
+            json={
+                "message": f"feat(sigma): {title}",
+                "content": content_b64,
+                "branch": branch_name,
+            },
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"network error committing file: {exc.__class__.__name__}")
+    if not file_resp.is_success:
+        raise HTTPException(502, f"failed to commit rule file: HTTP {file_resp.status_code}")
+
+    # 4. Open PR
+    pr_body = payload.reasoning.strip() or f"Rule submitted by {payload.submitted_by} via Operator Console."
+    try:
+        pr_resp = await _client.post(
+            f"{GITHUB_API}/repos/{REPO}/pulls",
+            headers=_gh_headers(),
+            json={
+                "title": f"feat(sigma): {title}",
+                "head": branch_name,
+                "base": "main",
+                "body": pr_body,
+            },
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"network error opening PR: {exc.__class__.__name__}")
+    if not pr_resp.is_success:
+        raise HTTPException(502, f"failed to open PR: HTTP {pr_resp.status_code}")
+
+    pr_data = pr_resp.json()
+    pr_number = pr_data.get("number")
+    pr_url = pr_data.get("html_url")
+
+    # 5. Register proposal with origin: human
+    pid = "prop-" + uuid.uuid4().hex[:12]
+    record = {
+        "id": pid,
+        "origin": "human",
+        "submitted_by": (payload.submitted_by or "operator")[:64],
+        "status": "pending",
+        "technique": technique,
+        "title": title,
+        "sigma_yaml": payload.sigma_yaml,
+        "reasoning": pr_body,
+        "pr_url": pr_url or f"https://github.com/{REPO}/pull/{pr_number}",
+        "pr_number": pr_number,
+        "branch": branch_name,
+        "slug": slug,
+        "created_at": _now_iso(),
+        "warnings": warnings,
+    }
+    async with _file_lock:
+        proposals = _read_list(PROPOSALS_FILE)
+        proposals.append(record)
+        _write_json(PROPOSALS_FILE, proposals)
+        _log_activity("operator", "rule.submitted", f"{technique} - {title} (PR #{pr_number})", pid)
+
+    return {
+        "id": pid,
+        "pr_url": record["pr_url"],
+        "pr_number": pr_number,
+        "origin": "human",
+        "status": "pending",
+        "warnings": warnings,
+    }
+
+
+@app.get("/api/proposals/{pid}/deployment-status")
+async def proposal_deployment_status(pid: str):
+    prop = _find_proposal(_read_list(PROPOSALS_FILE), pid)
+    if prop is None:
+        raise HTTPException(404, "proposal not found")
+    status = prop.get("status")
+    if status not in ("merged", "validated"):
+        return {
+            "status": status,
+            "stage": status,
+            "detail": f"Proposal is {status} (not yet merged)",
+            "runs": [],
+        }
+    stage = "merged"
+    runs_info = []
+    if GITHUB_TOKEN:
+        try:
+            resp = await _gh_get(f"{GITHUB_API}/repos/{REPO}/actions/runs?branch=main&per_page=10")
+            if resp.is_success:
+                workflow_runs = resp.json().get("workflow_runs", [])
+                for r in workflow_runs:
+                    runs_info.append({
+                        "name": r.get("name", ""),
+                        "status": r.get("status"),
+                        "conclusion": r.get("conclusion"),
+                        "html_url": r.get("html_url"),
+                    })
+                deploy_runs = [r for r in workflow_runs if "deploy" in r.get("name", "").lower() and "wazuh" in r.get("name", "").lower()]
+                convert_runs = [r for r in workflow_runs if "convert" in r.get("name", "").lower()]
+                if deploy_runs and deploy_runs[0].get("status") == "completed" and deploy_runs[0].get("conclusion") == "success":
+                    stage = "deployed"
+                elif deploy_runs and deploy_runs[0].get("status") in ("queued", "in_progress", "waiting"):
+                    stage = "deploying"
+                elif convert_runs and convert_runs[0].get("status") in ("queued", "in_progress", "waiting"):
+                    stage = "converting"
+                elif (deploy_runs and deploy_runs[0].get("conclusion") in ("failure", "cancelled")) or (convert_runs and convert_runs[0].get("conclusion") in ("failure", "cancelled")):
+                    stage = "failed"
+        except (httpx.HTTPError, ValueError):
+            pass
+    return {
+        "status": status,
+        "stage": stage,
+        "detail": f"Stage: {stage}",
+        "runs": runs_info[:5],
+    }
+
+
+@app.post("/api/proposals/{pid}/run-validation")
+async def run_validation(pid: str):
+    prop = _find_proposal(_read_list(PROPOSALS_FILE), pid)
+    if prop is None:
+        raise HTTPException(404, "proposal not found")
+    if not GITHUB_TOKEN:
+        raise HTTPException(503, "GITHUB_TOKEN not configured on server")
+    workflow_file = "attack-test.yml"
+    dispatch_url = f"{GITHUB_API}/repos/{REPO}/actions/workflows/{workflow_file}/dispatches"
+    technique = prop.get("technique") or prop.get("id") or ""
+    try:
+        resp = await _client.post(
+            dispatch_url,
+            headers=_gh_headers(),
+            json={"ref": "main", "inputs": {"detection_id": technique}},
+        )
+        if resp.status_code == 404:
+            return {
+                "dispatched": False,
+                "status": "pending_workflow",
+                "detail": f"Validation workflow '{workflow_file}' not found in repo",
+                "proposal_id": pid,
+            }
+        if not resp.is_success:
+            return {
+                "dispatched": False,
+                "status": "failed",
+                "detail": f"GitHub dispatch HTTP {resp.status_code}",
+                "proposal_id": pid,
+            }
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"Failed to contact GitHub Actions: {exc.__class__.__name__}")
+    async with _file_lock:
+        _log_activity("operator", "proposal.run_validation", f"Dispatched {workflow_file} for {technique}", pid)
+    return {
+        "dispatched": True,
+        "workflow": workflow_file,
+        "status": "dispatched",
+        "detail": f"Dispatched validation workflow for {technique}",
+        "actions_url": f"https://github.com/{REPO}/actions",
+        "proposal_id": pid,
+    }
+
+
+DETECTION_LOOKUP: dict[str, dict[str, str]] = {
+    "DET-001": {"slug": "ssh_bruteforce", "rule_id": "100008"},
+    "DET-002": {"slug": "powershell_encoded_command", "rule_id": "100005"},
+    "DET-003": {"slug": "powershell_download_cradle", "rule_id": "100004"},
+    "DET-004": {"slug": "lsass_credential_dumping", "rule_id": "100003"},
+    "DET-005": {"slug": "local_user_creation", "rule_id": "100002"},
+    "DET-006": {"slug": "scheduled_task_creation", "rule_id": "100006"},
+    "DET-007": {"slug": "suspicious_service_creation", "rule_id": "100011"},
+    "DET-011": {"slug": "security_log_cleared", "rule_id": "100007"},
+    "DET-012": {"slug": "notepad_execution", "rule_id": "100012"},
+    "DET-013": {"slug": "t1547_001_registry_run_key_persistence_via_setvalue", "rule_id": "100021"},
+}
+RULE_ID_TO_DET: dict[str, str] = {v["rule_id"]: k for k, v in DETECTION_LOOKUP.items()}
+SLUG_TO_DET: dict[str, str] = {v["slug"]: k for k, v in DETECTION_LOOKUP.items()}
+
+
+async def _fetch_artifacts(identifier: str, prop: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Fetch Sigma YAML, Wazuh XML, and Splunk SPL for a detection or proposal."""
+    slug: str | None = None
+    rule_id: str | None = None
+    det_id: str | None = None
+    title = ""
+
+    ident_upper = identifier.strip().upper()
+    ident_lower = identifier.strip().lower()
+
+    if ident_upper in DETECTION_LOOKUP:
+        det_id = ident_upper
+        slug = DETECTION_LOOKUP[ident_upper]["slug"]
+        rule_id = DETECTION_LOOKUP[ident_upper]["rule_id"]
+    elif identifier in RULE_ID_TO_DET:
+        rule_id = identifier
+        det_id = RULE_ID_TO_DET[identifier]
+        slug = DETECTION_LOOKUP[det_id]["slug"]
+    elif ident_lower in SLUG_TO_DET:
+        slug = ident_lower
+        det_id = SLUG_TO_DET[ident_lower]
+        rule_id = DETECTION_LOOKUP[det_id]["rule_id"]
+    elif prop:
+        slug = prop.get("slug") or (prop.get("branch") or "").replace("rule/", "") or ""
+        technique = prop.get("technique", "")
+        det_id = prop.get("detection_id") or technique
+        rule_id = (prop.get("validation") or {}).get("rule_id")
+        title = prop.get("title", "")
+    else:
+        slug = ident_lower.replace(".yml", "").replace(".spl", "")
+
+    sigma_yaml = ""
+    wazuh_xml = ""
+    splunk_spl = ""
+
+    # 1. Sigma YAML
+    if prop and prop.get("sigma_yaml"):
+        sigma_yaml = prop["sigma_yaml"]
+    elif slug:
+        local_sigma = DETECTIONS_DIR / "sigma" / f"{slug}.yml"
+        if local_sigma.exists():
+            try:
+                sigma_yaml = local_sigma.read_text(encoding="utf-8")
+            except OSError:
+                pass
+        if not sigma_yaml:
+            try:
+                resp = await _gh_get(f"https://raw.githubusercontent.com/{REPO}/main/detections/sigma/{slug}.yml", auth=False)
+                if resp.is_success:
+                    sigma_yaml = resp.text
+            except httpx.HTTPError:
+                pass
+
+    if not title and sigma_yaml:
+        try:
+            parsed = yaml.safe_load(sigma_yaml)
+            if isinstance(parsed, dict):
+                title = parsed.get("title", "")
+        except Exception:
+            pass
+
+    # 2. Splunk SPL
+    if slug:
+        local_spl = DETECTIONS_DIR / "splunk" / f"{slug}.spl"
+        if local_spl.exists():
+            try:
+                splunk_spl = local_spl.read_text(encoding="utf-8")
+            except OSError:
+                pass
+        if not splunk_spl:
+            try:
+                resp = await _gh_get(f"https://raw.githubusercontent.com/{REPO}/main/detections/splunk/{slug}.spl", auth=False)
+                if resp.is_success:
+                    splunk_spl = resp.text
+            except httpx.HTTPError:
+                pass
+
+    # 3. Wazuh XML
+    all_rules_xml = ""
+    local_rules = DETECTIONS_DIR / "wazuh" / "custom_rules.xml"
+    if local_rules.exists():
+        try:
+            all_rules_xml = local_rules.read_text(encoding="utf-8")
+        except OSError:
+            pass
+    if not all_rules_xml:
+        try:
+            resp = await _gh_get(f"https://raw.githubusercontent.com/{REPO}/main/detections/wazuh/custom_rules.xml", auth=False)
+            if resp.is_success:
+                all_rules_xml = resp.text
+        except httpx.HTTPError:
+            pass
+
+    if rule_id and all_rules_xml:
+        pattern = r'(  <rule id="' + re.escape(rule_id) + r'".*?</rule>)'
+        m = re.search(pattern, all_rules_xml, re.DOTALL)
+        if m:
+            wazuh_xml = m.group(1).strip()
+
+    is_deployed = bool(wazuh_xml)
+    if not wazuh_xml:
+        level = 10
+        wazuh_xml = (
+            f"<!-- Converted preview (pending deployment) -->\n"
+            f'<rule id="preview" level="{level}">\n'
+            f"  <description>Detection Platform: {title or 'Custom Rule'} [{det_id or 'Custom'}]</description>\n"
+            f"</rule>"
+        )
+
+    if not splunk_spl:
+        splunk_spl = f'# Generated SPL preview\nindex=main EventID=* (preview for "{title or slug}")'
+
+    return {
+        "detection_id": det_id or (prop.get("technique") if prop else identifier),
+        "slug": slug or identifier,
+        "title": title or (prop.get("title") if prop else identifier),
+        "rule_id": rule_id,
+        "status": "deployed" if is_deployed else "preview",
+        "sigma_yaml": sigma_yaml,
+        "wazuh_xml": wazuh_xml,
+        "splunk_spl": splunk_spl,
+    }
+
+
+@app.get("/api/proposals/{pid}/artifacts")
+async def proposal_artifacts(pid: str):
+    prop = _find_proposal(_read_list(PROPOSALS_FILE), pid)
+    if prop is None:
+        raise HTTPException(404, "proposal not found")
+    return await _fetch_artifacts(pid, prop)
+
+
+@app.get("/api/rules/{identifier}/artifacts")
+async def rule_artifacts(identifier: str):
+    proposals = _read_list(PROPOSALS_FILE)
+    prop = _find_proposal(proposals, identifier)
+    return await _fetch_artifacts(identifier, prop)
+
 
 
 # ---------------------------------------------------------------------------

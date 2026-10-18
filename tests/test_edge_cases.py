@@ -805,3 +805,75 @@ def test_non_ascii_console_token_never_500(m, monkeypatch):
     monkeypatch.setattr(m, "CONSOLE_TOKEN", "tøken")
     with TestClient(m.app) as c:
         assert c.get("/api/proposals", headers={"Authorization": "Bearer token"}).status_code == 401
+
+
+def test_submit_rule_edge_cases(m, monkeypatch):
+    valid_sigma = """
+title: Test Duplicate Title
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image: 'test.exe'
+    condition: selection
+tags:
+    - attack.t1059.001
+"""
+    # Seed an existing proposal with this title and slug
+    existing = [{
+        "id": "prop-exist-1",
+        "technique": "T1059.001",
+        "title": "Test Duplicate Title",
+        "sigma_yaml": valid_sigma,
+        "reasoning": "first",
+        "pr_url": "https://github.com/Ctum0/detection-platform/pull/1",
+        "pr_number": 1,
+        "branch": "rule/existing-slug",
+        "slug": "existing-slug",
+        "created_at": "2026-10-01T00:00:00Z",
+        "status": "pending",
+        "origin": "human",
+    }]
+    m._write_json(m.PROPOSALS_FILE, existing)
+
+    with TestClient(m.app) as c:
+        # 1. Duplicate title -> 409
+        r = c.post("/api/rules/submit", json={"slug": "new-slug", "sigma_yaml": valid_sigma}, headers=AUTH)
+        assert r.status_code == 409
+        assert "already exists in proposals" in r.json()["detail"]
+
+        # 2. Duplicate slug -> 409
+        other_yaml = valid_sigma.replace("Test Duplicate Title", "Completely New Title")
+        r = c.post("/api/rules/submit", json={"slug": "existing-slug", "sigma_yaml": other_yaml}, headers=AUTH)
+        assert r.status_code == 409
+        assert "already exists in proposals" in r.json()["detail"]
+
+        # 3. Missing GITHUB_TOKEN -> 503
+        monkeypatch.setattr(m, "GITHUB_TOKEN", "")
+        r = c.post("/api/rules/submit", json={"slug": "brand-new-slug", "sigma_yaml": other_yaml}, headers=AUTH)
+        assert r.status_code == 503
+
+        # 4. Unknown origin in list_proposals -> 422
+        r_orig = c.get("/api/proposals?origin=invalid", headers=AUTH)
+        assert r_orig.status_code == 422
+
+        # 5. Run validation on unknown proposal -> 404
+        r_val = c.post("/api/proposals/prop-nonexistent/run-validation", headers=AUTH)
+        assert r_val.status_code == 404
+
+        # 6. Run validation without token -> 503
+        r_val503 = c.post("/api/proposals/prop-exist-1/run-validation", headers=AUTH)
+        assert r_val503.status_code == 503
+
+        # 7. Deployment status on non-existent -> 404
+        assert c.get("/api/proposals/prop-nonexistent/deployment-status", headers=AUTH).status_code == 404
+
+        # 8. Artifacts on non-existent proposal -> 404
+        assert c.get("/api/proposals/prop-nonexistent/artifacts", headers=AUTH).status_code == 404
+
+        # 9. Artifacts by identifier on custom/unknown -> returns preview structure
+        r_art = c.get("/api/rules/unknown-rule-slug/artifacts", headers=AUTH)
+        assert r_art.status_code == 200
+        assert r_art.json()["status"] == "preview"
+
