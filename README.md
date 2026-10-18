@@ -1,15 +1,26 @@
 # Operator Console — Detection Engineering Control Plane
 
+<div align="center">
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-console.ctum.org-6366f1?style=for-the-badge&logo=safari&logoColor=white)](https://console.ctum.org/?demo=1)
 [![Tests](https://github.com/Ctum0/operator-console/actions/workflows/tests.yml/badge.svg)](https://github.com/Ctum0/operator-console/actions/workflows/tests.yml)
 
-FastAPI control plane for authoring, submitting, and reviewing Sigma detection rules (both human submissions and AI proposals), viewing multi-backend compiled artifacts (Sigma YAML, Wazuh XML, Splunk SPL), managing merge gates, and dispatching validation runs into [`Ctum0/detection-platform`](https://github.com/Ctum0/detection-platform).
+</div>
 
-Live demo runbook & video recording script: [`docs/DEMO.md`](https://github.com/Ctum0/detection-platform/blob/main/docs/DEMO.md).
+<p align="center">
+  <img src="docs/images/studio-preview.png" alt="Detection Studio IDE Workbench" width="900" style="border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+</p>
 
-After a merge, that repo's `convert-deploy.yml` workflow converts the new Sigma
-rule to a Wazuh rule, merges it into `detections/wazuh/custom_rules.xml` and
-starts the Wazuh deploy. Proposals stay `merged` until an attack run proves the
-rule, which is recorded with **Record validation**.
+Enterprise control plane for detection engineering:
+- **Detection Studio & IDE**: Author Sigma rules with pre-loaded MITRE ATT&CK templates, test offline alert simulation, and preview real-time transpilation across **5 SIEM dialects** (Splunk SPL, Microsoft Sentinel KQL, Elastic EQL, Wazuh XML, and CrowdStrike LogScale CQL).
+- **PR Submission & Review Queue**: Direct GitHub API branch/PR authoring for both human engineers and AI detection agents (`origin: human` / `origin: ai`).
+- **CI/CD Merge Gate & Validation**: Automated CI check polling before merging, CD deployment tracking to Wazuh via self-hosted runner, and on-demand purple-team attack validation dispatch into [`Ctum0/detection-platform`](https://github.com/Ctum0/detection-platform).
+
+**Live Interactive Sandbox**: Experience the console immediately without credentials at [**https://console.ctum.org/?demo=1**](https://console.ctum.org/?demo=1). Live runbook and video recording script: [`docs/DEMO.md`](https://github.com/Ctum0/detection-platform/blob/main/docs/DEMO.md).
+
+<p align="center">
+  <img src="docs/images/queue-preview.png" alt="Proposal Review Queue & Lifecycle" width="900" style="border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+</p>
 
 Part of the Detection Platform project — the console is the control plane and human gate:
 Human / AI authors rule → operator reviews here → approve merges PR → CI/CD deploys → validation proves alert.
