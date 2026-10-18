@@ -1,16 +1,18 @@
-# Operator Console — AI Detection Review Queue
+# Operator Console — Detection Engineering Control Plane
 
-FastAPI control plane for reviewing AI-proposed Sigma detection rules and merging
-their GitHub PRs into [`Ctum0/detection-platform`](https://github.com/Ctum0/detection-platform)
-(which triggers that repo's CI: Sigma validation and Splunk SPL generation).
+[![Tests](https://github.com/Ctum0/operator-console/actions/workflows/tests.yml/badge.svg)](https://github.com/Ctum0/operator-console/actions/workflows/tests.yml)
+
+FastAPI control plane for authoring, submitting, and reviewing Sigma detection rules (both human submissions and AI proposals), viewing multi-backend compiled artifacts (Sigma YAML, Wazuh XML, Splunk SPL), managing merge gates, and dispatching validation runs into [`Ctum0/detection-platform`](https://github.com/Ctum0/detection-platform).
+
+Live demo runbook & video recording script: [`docs/DEMO.md`](https://github.com/Ctum0/detection-platform/blob/main/docs/DEMO.md).
 
 After a merge, that repo's `convert-deploy.yml` workflow converts the new Sigma
 rule to a Wazuh rule, merges it into `detections/wazuh/custom_rules.xml` and
 starts the Wazuh deploy. Proposals stay `merged` until an attack run proves the
 rule, which is recorded with **Record validation**.
 
-Part of the Detection Platform project — the console is the human approval gate:
-AI proposes → operator reviews here → approve merges the PR → CI/CD ships it.
+Part of the Detection Platform project — the console is the control plane and human gate:
+Human / AI authors rule → operator reviews here → approve merges PR → CI/CD deploys → validation proves alert.
 
 ## Lifecycle
 
