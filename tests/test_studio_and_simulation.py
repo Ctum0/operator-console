@@ -72,3 +72,47 @@ def test_simulate_alert(m):
         assert data["technique"] == "T1547.001"
         assert "alert" in data
         assert data["alert"]["status"] == "alert_fired"
+
+
+def test_proposal_ci_status(m, monkeypatch):
+    with TestClient(m.app) as c:
+        m._write_json(m.PROPOSALS_FILE, [{
+            "id": "prop-ci-test",
+            "pr_number": 12,
+            "status": "pending",
+        }])
+
+        async def fake_ci_gate(pr_number):
+            return True, "all CI checks passed on head 12345678", "12345678"
+
+        monkeypatch.setattr(m, "_ci_gate", fake_ci_gate)
+        resp = c.get("/api/proposals/prop-ci-test/ci-status", headers=AUTH)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["state"] == "passed"
+        assert data["head_sha"] == "12345678"
+
+
+def test_proposal_deployment_status_stages(m):
+    with TestClient(m.app) as c:
+        m._write_json(m.PROPOSALS_FILE, [
+            {"id": "p-val", "status": "validated"},
+            {"id": "p-merg", "status": "merged"},
+            {"id": "p-pend", "status": "pending"},
+        ])
+
+        # Validated proposal returns validated stage
+        r1 = c.get("/api/proposals/p-val/deployment-status", headers=AUTH)
+        assert r1.status_code == 200
+        assert r1.json()["stage"] == "validated"
+
+        # Pending proposal returns pending
+        r2 = c.get("/api/proposals/p-pend/deployment-status", headers=AUTH)
+        assert r2.status_code == 200
+        assert r2.json()["stage"] == "pending"
+
+        # Merged proposal returns merged (without GitHub token)
+        r3 = c.get("/api/proposals/p-merg/deployment-status", headers=AUTH)
+        assert r3.status_code == 200
+        assert r3.json()["stage"] == "merged"

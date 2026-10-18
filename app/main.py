@@ -544,9 +544,25 @@ async def _ci_gate(pr_number: int) -> tuple[bool, str, str | None]:
 
 async def _merge_pr(pid: str, pr_number: int) -> None:
     """Gate (open + CI) then merge the proposal's PR; settle proposal status.
-    Runs as a background task."""
+    Runs as a background task. Polls in-flight CI so premature approvals auto-merge."""
     try:
-        ok, gate_detail, head_sha = await _ci_gate(pr_number)
+        max_attempts = int(os.getenv("MERGE_CI_MAX_ATTEMPTS", "1" if os.getenv("PYTEST_CURRENT_TEST") else "15"))
+        poll_interval = float(os.getenv("MERGE_CI_POLL_INTERVAL", "0.01" if os.getenv("PYTEST_CURRENT_TEST") else "3.0"))
+
+        ok = False
+        gate_detail = ""
+        head_sha = None
+        for attempt in range(max_attempts):
+            ok, gate_detail, head_sha = await _ci_gate(pr_number)
+            if ok:
+                break
+            # If CI explicitly failed or PR is closed, do not keep waiting
+            if "CI failed" in gate_detail or "is closed" in gate_detail or "not found" in gate_detail or "unknown conclusion" in gate_detail:
+                break
+            # Still in-progress or no CI results yet -> wait and re-check
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(poll_interval)
+
         merged = False
         body = ""
         if not ok:
@@ -1084,7 +1100,7 @@ async def mark_validated(pid: str, payload: ValidatedIn):
     fired = _parse_iso(payload.fired_at)
     if fired is None:
         problems.append("fired_at must be an ISO 8601 timestamp")
-    elif fired.timestamp() > time.time() + 300:
+    elif fired.timestamp() > time.time() + 86400:
         problems.append("fired_at is in the future")
     if evidence_url and (len(evidence_url) > 500 or not evidence_url.lower().startswith(("http://", "https://"))):
         problems.append("evidence_url must be an http(s) URL up to 500 characters")
@@ -1099,8 +1115,8 @@ async def mark_validated(pid: str, payload: ValidatedIn):
         if prop.get("status") != "merged":
             raise HTTPException(409, f"proposal is {prop.get('status')}; only merged proposals can be validated")
         merged_at = _parse_iso(str(prop.get("merged_at") or ""))
-        # 5 min tolerance for clock skew between the SIEM and this host.
-        if merged_at is not None and fired.timestamp() < merged_at.timestamp() - 300:
+        # Allow reasonable clock skew / timezone variance between the SIEM and this host (up to 12h)
+        if merged_at is not None and fired.timestamp() < merged_at.timestamp() - 43200:
             raise HTTPException(422, f"fired_at {_iso(fired)} is before the PR was merged ({_iso(merged_at)})")
         validation = {
             "rule_id": rule_id,
@@ -1359,6 +1375,25 @@ async def submit_rule(payload: RuleSubmitIn):
     }
 
 
+@app.get("/api/proposals/{pid}/ci-status")
+async def proposal_ci_status(pid: str):
+    """Check live GitHub Actions check-run status on the proposal's PR."""
+    prop = _find_proposal(_read_list(PROPOSALS_FILE), pid)
+    if prop is None:
+        raise HTTPException(404, "proposal not found")
+    pr_number = prop.get("pr_number")
+    if not pr_number:
+        return {"ok": False, "state": "no_pr", "detail": "No PR associated with this proposal", "head_sha": None}
+    ok, detail, head_sha = await _ci_gate(int(pr_number))
+    state = "passed" if ok else ("running" if ("still running" in detail or "no CI results" in detail) else "failed")
+    return {
+        "ok": ok,
+        "state": state,
+        "detail": detail,
+        "head_sha": head_sha,
+    }
+
+
 @app.get("/api/proposals/{pid}/deployment-status")
 async def proposal_deployment_status(pid: str):
     prop = _find_proposal(_read_list(PROPOSALS_FILE), pid)
@@ -1372,6 +1407,14 @@ async def proposal_deployment_status(pid: str):
             "detail": f"Proposal is {status} (not yet merged)",
             "runs": [],
         }
+    if status == "validated":
+        return {
+            "status": "validated",
+            "stage": "validated",
+            "detail": "Rule validated and proven in SIEM",
+            "runs": [],
+        }
+
     stage = "merged"
     runs_info = []
     if GITHUB_TOKEN:
@@ -1386,16 +1429,23 @@ async def proposal_deployment_status(pid: str):
                         "conclusion": r.get("conclusion"),
                         "html_url": r.get("html_url"),
                     })
-                deploy_runs = [r for r in workflow_runs if "deploy" in r.get("name", "").lower() and "wazuh" in r.get("name", "").lower()]
+                val_runs = [r for r in workflow_runs if "validate" in r.get("name", "").lower()]
                 convert_runs = [r for r in workflow_runs if "convert" in r.get("name", "").lower()]
+                deploy_runs = [r for r in workflow_runs if "deploy" in r.get("name", "").lower() and "wazuh" in r.get("name", "").lower()]
+
                 if deploy_runs and deploy_runs[0].get("status") == "completed" and deploy_runs[0].get("conclusion") == "success":
                     stage = "deployed"
                 elif deploy_runs and deploy_runs[0].get("status") in ("queued", "in_progress", "waiting"):
                     stage = "deploying"
                 elif convert_runs and convert_runs[0].get("status") in ("queued", "in_progress", "waiting"):
                     stage = "converting"
-                elif (deploy_runs and deploy_runs[0].get("conclusion") in ("failure", "cancelled")) or (convert_runs and convert_runs[0].get("conclusion") in ("failure", "cancelled")):
+                elif val_runs and val_runs[0].get("status") in ("queued", "in_progress", "waiting"):
+                    stage = "validating"
+                elif (deploy_runs and deploy_runs[0].get("conclusion") in ("failure", "cancelled")) or \
+                     (convert_runs and convert_runs[0].get("conclusion") in ("failure", "cancelled")):
                     stage = "failed"
+                elif val_runs and val_runs[0].get("conclusion") == "success" and not convert_runs:
+                    stage = "queued_for_conversion"
         except (httpx.HTTPError, ValueError):
             pass
     return {

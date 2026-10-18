@@ -938,7 +938,7 @@ const S = {
   proposals: [], counts: {}, health: null, coverage: null, triggers: null, activity: null,
   chartDays: 14, live: true, covQ: '', covStatus: 'all', covOpen: new Set(), actActor: '', actLimit: 60,
   drawer: {}, yamlOpen: new Set(), armed: {}, busy: new Set(), drafts: {},
-  artTab: {}, artCache: {}, depStatus: {},
+  artTab: {}, artCache: {}, depStatus: {}, ciStatus: {},
   detailSig: '', timer: null, booted: false,
 };
 try { S.tab = localStorage.getItem('consoleTab') || 'action'; } catch (_) {}
@@ -1337,14 +1337,26 @@ async function loadArtifacts(id) {
   }
 }
 
-async function loadDeploymentStatus(id) {
-  if (S.depStatus[id]) return;
+async function loadCiStatus(id, force = false) {
+  if (!force && S.ciStatus[id] && ['passed', 'failed'].includes(S.ciStatus[id].state)) return;
+  try {
+    const data = await api('GET', `/api/proposals/${encodeURIComponent(id)}/ci-status`);
+    S.ciStatus[id] = data;
+    renderDetail(true);
+  } catch (err) {
+    S.ciStatus[id] = { ok: false, state: 'unknown', detail: err.message };
+    renderDetail(true);
+  }
+}
+
+async function loadDeploymentStatus(id, force = false) {
+  if (!force && S.depStatus[id] && ['deployed', 'validated', 'failed'].includes(S.depStatus[id].stage)) return;
   try {
     const data = await api('GET', `/api/proposals/${encodeURIComponent(id)}/deployment-status`);
     S.depStatus[id] = data;
     renderDetail(true);
   } catch (err) {
-    S.depStatus[id] = { status: 'unknown' };
+    S.depStatus[id] = { status: 'unknown', stage: 'unknown' };
     renderDetail(true);
   }
 }
@@ -1397,10 +1409,19 @@ function detailHtml(p) {
   const delBtn = `<button class="btn btn-reject" type="button" data-act="delete" data-id="${id}"${busy} title="Remove this proposal from the console">${icon(delArmed ? 'alert' : 'x')}${delArmed ? 'Confirm delete' : 'Delete'}</button>`;
   const runValBtn = `<button class="btn btn-ghost" type="button" data-act="run-val" data-id="${id}"${busy} title="Dispatch CI validation workflow on GitHub Actions">${icon('pulse')}Run validation</button>`;
 
+  const ci = S.ciStatus[p.id];
+  const dep = S.depStatus[p.id];
+
   switch (p.status) {
     case 'pending': {
       const armed = p.id in S.armed;
-      foot = `<span class="hint">${armed ? icon('alert') + 'Click again to merge PR #' + esc(p.pr_number) : 'Approving merges the PR once its CI is green.'}</span>${delBtn}
+      let hintText = armed ? icon('alert') + 'Click again to merge PR #' + esc(p.pr_number) : 'Approving merges the PR once its CI is green.';
+      if (!armed && ci) {
+        if (ci.state === 'running') hintText = '<span class="dot warn pulse"></span>CI checks running on PR. Approving will auto-merge when green.';
+        else if (ci.state === 'passed') hintText = '<span class="dot ok"></span>PR CI passed. Ready to merge.';
+        else if (ci.state === 'failed') hintText = '<span class="dot bad"></span>CI failed on PR: ' + esc(ci.detail || '');
+      }
+      foot = `<span class="hint">${hintText}</span>${delBtn}
         <button class="btn btn-reject" type="button" data-act="drawer" data-drawer="reject" data-id="${id}"${busy}>${icon('x')}Reject</button>
         <button class="btn btn-approve${armed ? ' armed' : ''}" type="button" data-act="approve" data-id="${id}"${busy}>${icon('check')}${armed ? 'Confirm merge' : 'Approve'}</button>`;
       break;
@@ -1411,12 +1432,19 @@ function detailHtml(p) {
         <button class="btn btn-approve" type="button" data-act="retry" data-id="${id}"${busy}>${icon('retry')}Retry merge</button>`;
       break;
     case 'merging': case 'approved':
-      foot = '<span class="hint"><span class="dot accent pulse"></span>Checking the PR and its CI, then merging…</span>'; break;
-    case 'merged':
-      foot = `<span class="hint">Merged. The repo converts it to a Wazuh rule and deploys it; once that run finishes, fire the attack and record the alert.</span>
+      foot = '<span class="hint"><span class="dot accent pulse"></span>Verifying CI checks and auto-merging PR into main…</span>'; break;
+    case 'merged': {
+      let mergedHint = 'Merged. The repo converts it to a Wazuh rule and deploys it.';
+      if (dep && ['validating', 'converting', 'deploying', 'queued_for_conversion'].includes(dep.stage)) {
+        mergedHint = `<span class="dot accent pulse"></span>Deploying to Wazuh manager (${esc(sentence(dep.stage))} in progress)…`;
+      } else if (dep && dep.stage === 'deployed') {
+        mergedHint = '<span class="dot ok"></span>Deployed to Wazuh manager. Ready to fire attack or simulate alert.';
+      }
+      foot = `<span class="hint">${mergedHint}</span>
         <button class="btn btn-primary" type="button" data-act="simulate" data-id="${id}"${busy} title="Trigger offline simulated telemetry alert without victim VMs">${icon('flame')}Simulate alert</button>
         ${runValBtn}
         <button class="btn btn-approve" type="button" data-act="drawer" data-drawer="validate" data-id="${id}"${busy}>${icon('shield')}Record validation</button>`; break;
+    }
     case 'validated':
       foot = `<span class="hint" style="color:var(--ok)">${icon('shield')}Proven in the SIEM.</span>
         <button class="btn btn-ghost btn-sm" type="button" data-act="simulate" data-id="${id}"${busy} title="Re-fire simulated telemetry alert">${icon('flame')}Simulate alert</button>
@@ -1432,15 +1460,35 @@ function detailHtml(p) {
 
   let depPill = '';
   if (p.status === 'merged' || p.status === 'validated') {
-    const dep = S.depStatus[p.id];
     if (!dep) {
-      depPill = `<span class="pill muted"><span class="dot"></span>Checking deploy...</span>`;
+      depPill = `<span class="pill muted"><span class="dot pulse"></span>Checking deploy...</span>`;
       loadDeploymentStatus(p.id);
     } else {
-      const st = dep.status || 'unknown';
-      const cls = st === 'deployed' ? 'ok' : (st === 'converting' || st === 'deploying' ? 'accent' : (st === 'failed' ? 'bad' : 'muted'));
-      const pulse = st === 'converting' || st === 'deploying' ? ' pulse' : '';
-      depPill = `<span class="pill ${cls}"><span class="dot${pulse}"></span>${esc(sentence(st))}</span>`;
+      const st = dep.stage || dep.status || 'unknown';
+      const isProgress = ['validating', 'converting', 'deploying', 'queued_for_conversion'].includes(st);
+      const cls = (st === 'deployed' || st === 'validated') ? 'ok' : (isProgress ? 'accent' : (st === 'failed' ? 'bad' : 'muted'));
+      const pulse = isProgress ? ' pulse' : '';
+      const label = st === 'queued_for_conversion' ? 'Queued' : sentence(st);
+      depPill = `<span class="pill ${cls}" title="${esc(dep.detail || '')}"><span class="dot${pulse}"></span>${esc(label)}</span>`;
+      if (isProgress) {
+        setTimeout(() => loadDeploymentStatus(p.id, true), 3500);
+      }
+    }
+  }
+
+  let ciPill = '';
+  if (p.status === 'pending' || p.status === 'merging') {
+    if (!ci) {
+      ciPill = `<span class="pill muted"><span class="dot pulse"></span>Checking PR CI...</span>`;
+      loadCiStatus(p.id);
+    } else {
+      const cls = ci.state === 'passed' ? 'ok' : (ci.state === 'running' ? 'warn' : (ci.state === 'failed' ? 'bad' : 'muted'));
+      const pulse = ci.state === 'running' ? ' pulse' : '';
+      const text = ci.state === 'passed' ? 'CI Green' : (ci.state === 'running' ? 'CI Running' : (ci.state === 'failed' ? 'CI Failed' : 'No CI'));
+      ciPill = `<span class="pill ${cls}" title="${esc(ci.detail || '')}"><span class="dot${pulse}"></span>${esc(text)}</span>`;
+      if (ci.state === 'running') {
+        setTimeout(() => loadCiStatus(p.id, true), 3500);
+      }
     }
   }
 
@@ -1467,6 +1515,7 @@ function detailHtml(p) {
       <div class="d-meta">${pr ? `<a href="${esc(pr)}" target="_blank" rel="noopener noreferrer">${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}${icon('ext', 'ic-sm')}</a>` : `<span>${icon('pr', 'ic-sm')}PR #${esc(p.pr_number)}</span>`}
         <span>${icon('branch', 'ic-sm')}<code>${esc(p.branch)}</code></span>
         ${originBadge}
+        ${ciPill}
         ${depPill}
         <span title="${esc(fmtTs(p.created_at))}">${icon('clock', 'ic-sm')}Proposed ${esc(ago(p.created_at))}</span></div></div>
       ${statusPill(p)}</div>
@@ -1914,6 +1963,7 @@ function showSimulationModal(res) {
     S.drawer[res.proposal_id] = 'validate';
     S.drafts['rule:' + res.proposal_id] = res.rule_id;
     S.drafts['attack:' + res.proposal_id] = `Simulated ${res.technique} telemetry (Rule ${res.rule_id})`;
+    S.drafts['fired:' + res.proposal_id] = res.timestamp || nowLocalInput();
     renderDetail(true);
   };
 }
