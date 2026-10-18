@@ -3,6 +3,7 @@ import asyncio
 import importlib
 import json
 import time
+from datetime import datetime, timezone, timedelta
 
 import httpx
 import pytest
@@ -876,4 +877,36 @@ tags:
         r_art = c.get("/api/rules/unknown-rule-slug/artifacts", headers=AUTH)
         assert r_art.status_code == 200
         assert r_art.json()["status"] == "preview"
+
+
+def test_agent_health_failed_trigger_recovery(m, monkeypatch):
+    monkeypatch.setattr(m, "N8N_PROPOSE_WEBHOOK", "http://n8n/hook")
+    # Old trigger (10 minutes ago)
+    ten_min_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    m._write_json(m.TRIGGERS_FILE, [{
+        "id": "trg-old",
+        "ts": ten_min_ago,
+        "status": "failed",
+        "detail": "connection timeout"
+    }])
+    with TestClient(m.app) as c:
+        h = c.get("/api/health/pipeline", headers=AUTH).json()
+        comp = next(x for x in h["components"] if x["name"] == "Agent Link (n8n)")
+        assert comp["level"] == "ok"
+        assert "idle · ready" in comp["detail"]
+
+        # Recent trigger (30 seconds ago)
+        recent = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
+        m._write_json(m.TRIGGERS_FILE, [{
+            "id": "trg-recent",
+            "ts": recent,
+            "status": "failed",
+            "detail": "connection timeout"
+        }])
+        m._invalidate_health()
+        h2 = c.get("/api/health/pipeline", headers=AUTH).json()
+        comp2 = next(x for x in h2["components"] if x["name"] == "Agent Link (n8n)")
+        assert comp2["level"] == "warn"
+        assert "last trigger failed" in comp2["detail"]
+
 

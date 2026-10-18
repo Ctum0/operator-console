@@ -1904,7 +1904,7 @@ async def _build_pipeline_health() -> dict[str, Any]:
     if agent_ok and triggers:
         last = triggers[-1]
         last_dt = _parse_iso(last.get("ts") or "")
-        is_recent = last_dt and (time.time() - last_dt.timestamp() < 86400)
+        is_recent = last_dt and (time.time() - last_dt.timestamp() < 300)
         if last.get("status") == "failed" and is_recent:
             agent_level = "warn"
             agent_detail = f"last trigger failed · {_age(last.get('ts'))}"
