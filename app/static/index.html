@@ -6,9 +6,17 @@
 <meta name="color-scheme" content="dark">
 <script>
   // Decide before first paint whether the token gate is needed, so the app
-  // never flashes behind it.
-  try { if (!localStorage.getItem('consoleToken')) document.documentElement.classList.add('locked'); }
-  catch (_) { document.documentElement.classList.add('locked'); }
+  // never flashes behind it. Supports ?token=... in URL for one-click auth.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('token')) {
+      localStorage.setItem('consoleToken', params.get('token'));
+      const u = new URL(window.location);
+      u.searchParams.delete('token');
+      window.history.replaceState({}, '', u.toString());
+    }
+    if (!localStorage.getItem('consoleToken')) document.documentElement.classList.add('locked');
+  } catch (_) { document.documentElement.classList.add('locked'); }
 </script>
 <title>Operator Console</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236656e0'/%3E%3Cpath d='M12 5l6 2.4v4.4c0 3.6-2.5 6.3-6 7.7-3.5-1.4-6-4.1-6-7.7V7.4z' fill='none' stroke='white' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E">
