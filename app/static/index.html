@@ -1504,18 +1504,18 @@ function initDemoState() {
       ]
     },
     coverage: {
-      columns: ['Detection ID', 'Technique', 'Name', 'Platform', 'Log Source', 'Wazuh Rule ID', 'Test Ref', 'Status'],
+      columns: ['Detection ID', 'Technique', 'Tactic', 'Name', 'Platform', 'Log Source', 'Wazuh Rule ID', 'Test Ref', 'Status'],
       rows: [
-        ['DET-001', 'T1059.001', 'PowerShell Encoded Command', 'Windows', 'Process Creation (Sysmon EID 1)', '100002', 'ART T1059.001', 'VALIDATED'],
-        ['DET-002', 'T1003.001', 'LSASS Memory Dump via Procdump / comsvcs', 'Windows', 'Process Creation (Sysmon EID 1)', '100003', 'ART T1003.001', 'VALIDATED'],
-        ['DET-003', 'T1053.005', 'Suspicious Scheduled Task Creation', 'Windows', 'Process Creation / TaskScheduler', '100004', 'ART T1053.005', 'VALIDATED'],
-        ['DET-004', 'T1078.001', 'Built-in Guest/Default Account Usage', 'Windows', 'Security EventLog (EID 4624)', '100005', 'ART T1078.001', 'VALIDATED'],
-        ['DET-005', 'T1110.001', 'Password Guessing / Brute Force', 'Windows', 'Security EventLog (EID 4625)', '100006', 'ART T1110.001', 'VALIDATED'],
-        ['DET-006', 'T1046', 'Network Service Scanning', 'Network', 'Suricata EVE / Firewall', '100007', 'Nmap SYN scan', 'VALIDATED'],
-        ['DET-007', 'T1071.001', 'Web Shell Activity (China Chopper / Weevely)', 'Linux/Web', 'Nginx Access Log', '100011', 'Custom replay', 'VALIDATED'],
-        ['DET-011', 'T1036.005', 'Masquerading Process Name', 'Windows', 'Process Creation (Sysmon EID 1)', '100012', 'ART T1036.005', 'VALIDATED'],
-        ['DET-012', 'T1070.004', 'File Deletion via SDelete / Cipher', 'Windows', 'File Delete (Sysmon EID 23)', '100013', 'ART T1070.004', 'VALIDATED'],
-        ['DET-013', 'T1547.001', 'Registry Run Key Persistence', 'Windows', 'Registry Event (Sysmon EID 13)', '100021', 'ART T1547.001', 'VALIDATED']
+        ['DET-001', 'T1059.001', 'Execution', 'PowerShell Encoded Command', 'Windows', 'Process Creation (Sysmon EID 1)', '100002', 'ART T1059.001', 'VALIDATED'],
+        ['DET-002', 'T1003.001', 'Credential Access', 'LSASS Memory Dump via Procdump / comsvcs', 'Windows', 'Process Creation (Sysmon EID 1)', '100003', 'ART T1003.001', 'VALIDATED'],
+        ['DET-003', 'T1053.005', 'Persistence', 'Suspicious Scheduled Task Creation', 'Windows', 'Process Creation / TaskScheduler', '100004', 'ART T1053.005', 'VALIDATED'],
+        ['DET-004', 'T1078.001', 'Defense Impairment', 'Built-in Guest/Default Account Usage', 'Windows', 'Security EventLog (EID 4624)', '100005', 'ART T1078.001', 'VALIDATED'],
+        ['DET-005', 'T1110.001', 'Credential Access', 'Password Guessing / Brute Force', 'Windows', 'Security EventLog (EID 4625)', '100006', 'ART T1110.001', 'VALIDATED'],
+        ['DET-006', 'T1046', 'Discovery', 'Network Service Scanning', 'Network', 'Suricata EVE / Firewall', '100007', 'Nmap SYN scan', 'VALIDATED'],
+        ['DET-007', 'T1071.001', 'Command and Control', 'Web Shell Activity (China Chopper / Weevely)', 'Linux/Web', 'Nginx Access Log', '100011', 'Custom replay', 'VALIDATED'],
+        ['DET-011', 'T1036.005', 'Defense Impairment', 'Masquerading Process Name', 'Windows', 'Process Creation (Sysmon EID 1)', '100012', 'ART T1036.005', 'VALIDATED'],
+        ['DET-012', 'T1070.004', 'Defense Impairment', 'File Deletion via SDelete / Cipher', 'Windows', 'File Delete (Sysmon EID 23)', '100013', 'ART T1070.004', 'VALIDATED'],
+        ['DET-013', 'T1547.001', 'Persistence', 'Registry Run Key Persistence', 'Windows', 'Registry Event (Sysmon EID 13)', '100021', 'ART T1547.001', 'VALIDATED']
       ]
     },
     triggers: [
@@ -1907,6 +1907,7 @@ function yamlHighlight(y) {
   }).join('\n');
 }
 function nowLocalInput() { return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+function isDesktop() { return window.innerWidth > 960; }
 // Replace a container's HTML only when it changed, so 15 s polls do not
 // rebuild unchanged lists (which would drop keyboard focus and hover state).
 function setHTML(el, html) { if (el && el.__html !== html) { el.innerHTML = html; el.__html = html; } }
@@ -1974,14 +1975,27 @@ function covItems() {
   const cov = S.coverage; if (!cov) return [];
   const cols = (cov.columns || []).map(c => String(c).toLowerCase());
   const iT = cols.indexOf('technique') >= 0 ? cols.indexOf('technique') : 1;
-  const iTac = cols.indexOf('tactic') >= 0 ? cols.indexOf('tactic') : 2;
+  const hasTac = cols.indexOf('tactic') >= 0;
+  const iTac = hasTac ? cols.indexOf('tactic') : -1;
   const iS = cols.indexOf('status') >= 0 ? cols.indexOf('status') : 7;
   return (cov.rows || []).map(r => {
-    const cell = (i, keys) => Array.isArray(r) ? String(r[i] != null ? r[i] : '?') : String(keys.map(k => r[k]).find(v => v != null && v !== '') || '?');
+    const cell = (i, keys) => i >= 0 && Array.isArray(r) ? String(r[i] != null ? r[i] : '?') : String(keys.map(k => r[k]).find(v => v != null && v !== '') || '?');
     const tech = cell(iT, ['technique', 'Technique']), status = cell(iS, ['status', 'Status']);
-    const tactic = cell(iTac, ['tactic', 'Tactic']);
+    let tactic = hasTac ? cell(iTac, ['tactic', 'Tactic']) : '';
     const m = tech.match(/^(T\d{4}(?:\.\d{3})?)\s*(.*)$/);
-    return { row: r, id: cell(0, ['id', 'ID']), code: m ? m[1] : '', name: m ? m[2] : tech, tactic: tactic && tactic !== '?' ? tactic : 'Enterprise', status, lv: covLevel(status) };
+    const code = m ? m[1] : '';
+    if (!tactic || tactic === '?' || tactic === 'Enterprise') {
+      const baseTech = code.split('.')[0].toUpperCase();
+      const TAC_MAP = {
+        'T1059': 'Execution', 'T1053': 'Persistence', 'T1547': 'Persistence', 'T1543': 'Persistence',
+        'T1136': 'Persistence', 'T1003': 'Credential Access', 'T1110': 'Credential Access',
+        'T1555': 'Credential Access', 'T1078': 'Defense Impairment', 'T1070': 'Defense Impairment',
+        'T1036': 'Defense Impairment', 'T1685': 'Defense Impairment', 'T1046': 'Discovery',
+        'T1082': 'Discovery', 'T1087': 'Discovery', 'T1021': 'Lateral Movement'
+      };
+      if (TAC_MAP[baseTech]) tactic = TAC_MAP[baseTech];
+    }
+    return { row: r, id: cell(0, ['id', 'ID']), code, name: m ? m[2] : tech, tactic: tactic && tactic !== '?' ? tactic : 'Enterprise', status, lv: covLevel(status) };
   });
 }
 
