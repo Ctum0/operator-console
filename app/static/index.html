@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <script>
   // Decide before first paint whether the token gate is needed, so the app
   // never flashes behind it. Supports ?token=... in URL for one-click auth.
@@ -76,13 +76,14 @@
   --bg: #f8fafc;
   --bg-subtle: #f1f5f9;
   --side: #ffffff;
-  --panel: rgba(255, 255, 255, 0.92);
+  --panel: rgba(255, 255, 255, 0.94);
   --elev: #ffffff;
   --elev-2: #f1f5f9;
   --hover: rgba(15, 23, 42, 0.04);
   --border: rgba(15, 23, 42, 0.09);
   --border-2: rgba(15, 23, 42, 0.14);
   --border-3: rgba(15, 23, 42, 0.22);
+  --edge-dim: rgba(15, 23, 42, 0.1);
   --ink: #0f172a;
   --ink-2: #1e293b;
   --ink-3: #475569;
@@ -113,17 +114,122 @@
               var(--bg);
   color: var(--ink-2);
 }
+[data-theme="light"] a:hover { color: var(--accent); }
+[data-theme="light"] ::selection { background: rgba(79, 70, 229, 0.2); color: var(--ink); }
+[data-theme="light"] input[type="datetime-local"].input { color-scheme: light; }
+
+/* Structural Shell & Navigation */
+[data-theme="light"] .sidebar {
+  background: var(--side);
+  border-right-color: var(--border);
+  box-shadow: 4px 0 24px rgba(15, 23, 42, 0.05);
+}
+[data-theme="light"] .mobilebar {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: var(--border);
+}
+[data-theme="light"] .repo {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+[data-theme="light"] .repo:hover {
+  background: #ffffff;
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+[data-theme="light"] .user .avatar,
+[data-theme="light"] .note .avatar {
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  color: var(--ink-2);
+}
+[data-theme="light"] .bar { background: rgba(15, 23, 42, 0.08); }
+
+/* Banners & Status */
+[data-theme="light"] .demo-banner {
+  background: linear-gradient(90deg, rgba(79, 70, 229, 0.1) 0%, rgba(241, 245, 249, 0.96) 100%);
+  border-bottom-color: var(--accent-line);
+  color: var(--ink-2);
+}
+[data-theme="light"] .statusline {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+/* KPIs & Metric Cards */
+[data-theme="light"] .kpi {
+  background: var(--card-glass);
+  border-color: var(--border);
+  border-top: 2px solid var(--tint, var(--accent));
+  box-shadow: var(--card-shadow);
+}
+[data-theme="light"] a.kpi:hover {
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.12), 0 0 18px -4px var(--tint, rgba(79, 70, 229, 0.2));
+}
+[data-theme="light"] .prow {
+  background: #ffffff;
+  border-color: var(--border);
+}
+[data-theme="light"] .prow:hover {
+  background: rgba(79, 70, 229, 0.04);
+  border-color: var(--accent-line);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .chart-wrap .grid { stroke: rgba(15, 23, 42, 0.06); }
+
+/* Buttons & Interactive Elements */
+[data-theme="light"] .btn-ghost { background: rgba(15, 23, 42, 0.04); color: var(--ink-2); border-color: rgba(15, 23, 42, 0.1); }
+[data-theme="light"] .btn-ghost:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--ink);
+  border-color: rgba(15, 23, 42, 0.18);
+}
+[data-theme="light"] .btn-reject { background: #ffffff; color: var(--ink-2); border-color: rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .btn-reject:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: var(--bad); }
+[data-theme="light"] .btn-approve.armed { color: #ffffff; }
+[data-theme="light"] .btn-ghost.active {
+  background: #ffffff;
+  border-color: var(--border-3);
+  color: var(--accent-text);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
 [data-theme="light"] .card:hover { border-color: rgba(15, 23, 42, 0.18); }
 [data-theme="light"] .code { background: #f8fafc; color: #1e293b; border-color: rgba(15, 23, 42, 0.12); box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
 [data-theme="light"] .code .k { color: #4338ca; }
 [data-theme="light"] .code .s { color: #059669; }
 [data-theme="light"] .code .c { color: #94a3b8; }
-[data-theme="light"] .studio-editor { background: #ffffff; color: #0f172a; border-color: rgba(15, 23, 42, 0.15); }
-[data-theme="light"] .modal-card { background: #ffffff; color: var(--ink); box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.2); border-color: var(--border-2); }
-[data-theme="light"] .btn-ghost { background: rgba(15, 23, 42, 0.04); color: var(--ink-2); border-color: rgba(15, 23, 42, 0.1); }
-[data-theme="light"] .btn-ghost:hover:not(:disabled) { background: rgba(15, 23, 42, 0.08); }
-[data-theme="light"] .btn-reject { background: #ffffff; color: var(--ink-2); border-color: rgba(15, 23, 42, 0.12); }
-[data-theme="light"] .btn-reject:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: var(--bad); }
+[data-theme="light"] .skel { background: rgba(15, 23, 42, 0.06); }
+[data-theme="light"] .skel::after { background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.08), transparent); }
+
+/* Review Queue & Detail Drawer */
+[data-theme="light"] .qitem {
+  background: #ffffff;
+  border-color: var(--border);
+}
+[data-theme="light"] .qitem:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-2);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+[data-theme="light"] .qitem[aria-current="true"] {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0.03) 100%);
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.12);
+}
+[data-theme="light"] .qdetail-foot {
+  background: rgba(255, 255, 255, 0.95);
+  border-top-color: var(--border);
+}
+[data-theme="light"] .callout { border-color: var(--border-2); background: var(--bg-subtle); }
+[data-theme="light"] .form { border-color: var(--border-2); background: #ffffff; }
+[data-theme="light"] .form .input { background: var(--bg-subtle); }
+[data-theme="light"] .seg { background: var(--bg-subtle); border-color: var(--border); }
+[data-theme="light"] .seg button[aria-selected="true"] {
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
 [data-theme="light"] .steps { background: rgba(255, 255, 255, 0.9); border-color: rgba(15, 23, 42, 0.08); }
 [data-theme="light"] .step.done .num { color: #ffffff; }
 [data-theme="light"] .toast { background: #ffffff; color: var(--ink); border-color: rgba(15, 23, 42, 0.12); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); }
@@ -132,10 +238,71 @@
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 [data-theme="light"] table.t thead th { background: #f1f5f9; color: var(--ink-3); border-bottom-color: var(--border); }
 [data-theme="light"] table.t tbody tr:hover { background: rgba(15, 23, 42, 0.025); }
-[data-theme="light"] .d-foot { background: rgba(255, 255, 255, 0.95); border-top-color: var(--border); }
+[data-theme="light"] table.t tr.cov-detail td { background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+
+/* Detection Studio */
+[data-theme="light"] .studio-pane {
+  border-color: var(--border);
+  box-shadow: var(--card-shadow);
+}
+[data-theme="light"] .studio-pane-head,
+[data-theme="light"] .studio-controls {
+  border-color: var(--border);
+  background: transparent;
+}
+[data-theme="light"] .studio-editor { background: #ffffff; color: #0f172a; border-color: rgba(15, 23, 42, 0.15); }
 [data-theme="light"] .presets-bar { background: #f8fafc; border-bottom-color: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] .chip-btn {
+  background: #ffffff;
+  border-color: var(--border-2);
+  color: var(--ink-2);
+}
+[data-theme="light"] .chip-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-line);
+  color: var(--accent-text);
+}
+[data-theme="light"] .studio-tab.active {
+  color: var(--accent-text);
+  background: var(--accent-dim);
+  border-color: var(--accent-line);
+}
 [data-theme="light"] .studio-query-container { background: #f8fafc; border-top-color: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] .studio-query-output { color: #1e293b; }
+[data-theme="light"] .studio-query-output code { color: #0f172a; }
+[data-theme="light"] .studio-meta-footer {
+  background: var(--bg-subtle);
+  border-top-color: var(--border);
+}
 [data-theme="light"] .codebox { background: #f8fafc; border-color: rgba(15, 23, 42, 0.08); }
+
+/* Modals & Gate */
+.modal-card.wide, .modal-card.modal-wide { max-width: 860px; }
+[data-theme="light"] .modal-card { background: #ffffff; color: var(--ink); box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.2); border-color: var(--border-2); }
+[data-theme="light"] .modal-header {
+  border-bottom-color: var(--border);
+  background: transparent;
+}
+[data-theme="light"] .gate-card {
+  border-color: var(--border-2);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
+}
+.agent-status-box { background: #05070c; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r); padding: 16px; }
+[data-theme="light"] .agent-status-box { background: var(--bg-subtle); border-color: var(--border-2); color: var(--ink-2); }
+
+/* Missing utility classes */
+.badge {
+  display: inline-flex; align-items: center; font-family: var(--sans);
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.badge-accent {
+  background: var(--accent-dim); color: var(--accent-text); border: 1px solid var(--accent-line);
+}
+.btn-xs { height: 26px; padding: 0 10px; font-size: 11.5px; border-radius: var(--r-sm); }
+.btn-ghost.active {
+  background: var(--accent-dim); border-color: var(--accent-line); color: var(--accent-text);
+}
 * { margin:0; padding:0; box-sizing:border-box; }
 html { font-size:14px; height:100%; }
 body {
@@ -1403,7 +1570,7 @@ html.locked .gate[hidden] { display:grid !important; }
       <p style="font-size:13px; color:var(--ink-2); line-height:1.6; margin-bottom:16px;">
         The autonomous <b>Detection Gap Analyst</b> workflow has been dispatched via the n8n webhook. It analyzes MITRE ATT&amp;CK matrix gaps, drafts a candidate Sigma detection, and opens a GitHub PR into the review queue.
       </p>
-      <div style="background:#05070c; border:1px solid rgba(255,255,255,0.08); border-radius:var(--r); padding:16px; display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
+      <div class="agent-status-box" style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
         <div style="display:flex; align-items:center; gap:10px; color:var(--ok);">
           <svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M5.5 8l2 2 3.5-4"/></svg>
           <span style="font-weight:600;">Webhook dispatched &amp; registered in Agent runs</span>
@@ -1508,6 +1675,7 @@ function token() { try { return localStorage.getItem('consoleToken') || ''; } ca
 /* ================= demo sandbox ================= */
 const DEMO_PRESETS = [
   {
+    id: 't1547-001',
     slug: 'registry_run_key_persistence',
     title: 'Registry Run Key Persistence',
     technique: 'T1547.001',
@@ -1516,7 +1684,7 @@ const DEMO_PRESETS = [
     tags: ['attack.persistence', 'attack.t1547.001'],
     yaml: `title: Registry Run Key Persistence
 id: f456a293-1002-48df-9e20-3b9e4a8f1021
-status: production
+status: stable
 description: Detects modification of Windows Run registry keys for startup persistence
 references:
     - https://attack.mitre.org/techniques/T1547/001/
@@ -1537,6 +1705,7 @@ tags:
     - attack.t1547.001`
   },
   {
+    id: 't1059-001',
     slug: 'powershell_download_cradle',
     title: 'Suspicious PowerShell Download Cradle',
     technique: 'T1059.001',
@@ -1567,6 +1736,7 @@ tags:
     - attack.t1059.001`
   },
   {
+    id: 't1003-001',
     slug: 'lsass_memory_dump',
     title: 'LSASS Process Memory Access',
     technique: 'T1003.001',
@@ -1575,7 +1745,7 @@ tags:
     tags: ['attack.credential_access', 'attack.t1003.001'],
     yaml: `title: LSASS Process Memory Access
 id: 8b109e2a-4311-409b-a63e-72fa9e011003
-status: production
+status: stable
 description: Detects memory access or handle acquisition on lsass.exe for credential dumping
 logsource:
     category: process_access
@@ -1624,6 +1794,14 @@ function initDemoState() {
         reasoning: 'Monitors unauthorized additions to HKLM/HKCU CurrentVersion\\Run to maintain startup persistence.',
         validated_at: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(),
         validation_evidence: 'shared/evidence/det013-rule100021-alert.png',
+        validation: {
+          rule_id: '100021',
+          attack: 'Atomic Red Team T1547.001 #1',
+          fired_at: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(),
+          evidence_url: 'https://github.com/Ctum0/detection-platform/blob/main/shared/evidence/det013-rule100021-alert.png',
+          recorded_by: 'ctum0',
+          recorded_at: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString()
+        },
         sigma_yaml: DEMO_PRESETS[0].yaml
       },
       {
@@ -1682,15 +1860,16 @@ function initDemoState() {
       ]
     },
     triggers: [
-      { id: 'trig-demo-1', actor: 'operator', created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), status: 'succeeded', proposal_id: 'prop-demo-001' },
-      { id: 'trig-demo-2', actor: 'n8n-agent', created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), status: 'succeeded', proposal_id: 'prop-demo-003' }
+      { id: 'trig-demo-1', actor: 'operator', ts: new Date(Date.now() - 1000 * 60 * 120).toISOString(), created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), status: 'succeeded', proposal_id: 'prop-demo-001', detail: 'Generated Sigma rule for T1059.001' },
+      { id: 'trig-demo-2', actor: 'n8n-agent', ts: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), status: 'succeeded', proposal_id: 'prop-demo-003', detail: 'Generated Sigma rule for T1003.001' }
     ],
     activity: {
+      total: 4,
       activity: [
-        { id: 'act-1', actor: 'operator', action: 'submitted_rule', created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(), detail: 'Submitted T1059.001: Suspicious PowerShell Download Cradle' },
-        { id: 'act-2', actor: 'operator', action: 'validated', created_at: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(), detail: 'Validated DET-013 (rule 100021) with ART T1547.001' },
-        { id: 'act-3', actor: 'ci', action: 'merged', created_at: new Date(Date.now() - 1000 * 60 * 60 * 40).toISOString(), detail: 'Merged PR #37 for LSASS Memory Dump' },
-        { id: 'act-4', actor: 'operator', action: 'rejected', created_at: new Date(Date.now() - 1000 * 60 * 60 * 70).toISOString(), detail: 'Closed PR #34 (L-001 auditd retired)' }
+        { id: 'act-1', actor: 'operator', action: 'submitted_rule', ts: new Date(Date.now() - 1000 * 60 * 35).toISOString(), created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(), detail: 'Submitted T1059.001: Suspicious PowerShell Download Cradle' },
+        { id: 'act-2', actor: 'operator', action: 'validated', ts: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(), created_at: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(), detail: 'Validated DET-013 (rule 100021) with ART T1547.001' },
+        { id: 'act-3', actor: 'ci', action: 'merged', ts: new Date(Date.now() - 1000 * 60 * 60 * 40).toISOString(), created_at: new Date(Date.now() - 1000 * 60 * 60 * 40).toISOString(), detail: 'Merged PR #37 for LSASS Memory Dump' },
+        { id: 'act-4', actor: 'operator', action: 'rejected', ts: new Date(Date.now() - 1000 * 60 * 60 * 70).toISOString(), created_at: new Date(Date.now() - 1000 * 60 * 60 * 70).toISOString(), detail: 'Closed PR #34 (L-001 auditd retired)' }
       ]
     }
   };
@@ -1720,7 +1899,7 @@ function handleDemoApi(method, path, body) {
   }
   if (pathname === '/api/health/pipeline') return DEMO_STATE.health;
   if (pathname === '/api/coverage') return DEMO_STATE.coverage;
-  if (pathname === '/api/triggers') return DEMO_STATE.triggers;
+  if (pathname === '/api/triggers') return { triggers: DEMO_STATE.triggers, total: DEMO_STATE.triggers.length };
   if (pathname === '/api/activity') return DEMO_STATE.activity;
   if (pathname === '/api/rules/presets') return DEMO_PRESETS;
 
@@ -1775,6 +1954,8 @@ function handleDemoApi(method, path, body) {
     }
     if (action === 'ci-status') {
       return {
+        ok: true,
+        state: 'passed',
         status: 'passed',
         conclusion: 'success',
         checks: [
@@ -1797,15 +1978,26 @@ function handleDemoApi(method, path, body) {
       };
     }
     if (action === 'artifacts') {
+      const wazuhXml = `<!-- Wazuh Custom Rule (ID: ${p.rule_id || '100025'}) -->\n<group name="sysmon,windows,">\n  <rule id="${p.rule_id || '100025'}" level="10">\n    <if_group>windows</if_group>\n    <description>${p.title}</description>\n    <mitre>\n      <id>${p.technique}</id>\n    </mitre>\n  </rule>\n</group>`;
+      const splunkSpl = `index=windows sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" | where CommandLine LIKE "%${p.technique}%" | table _time, host, user, CommandLine`;
+      const sentinelKql = `DeviceProcessEvents\n| where Timestamp > ago(24h)\n| where ProcessCommandLine has "${p.technique}"\n| project Timestamp, DeviceName, AccountName, ProcessCommandLine`;
+      const elasticEql = `process where process.command_line != null and string_contains(process.command_line, "${p.technique}")`;
+      const cqlQuery = `#event_simpleName=/ProcessRollup2/\n| CommandLine=/${p.technique}/i\n| table([@timestamp, ComputerName, UserName, CommandLine])`;
       return {
         proposal_id: p.id,
         rule_slug: p.title.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+        sigma_yaml: p.sigma_yaml || '',
+        wazuh_xml: wazuhXml,
+        splunk_spl: splunkSpl,
+        kql: sentinelKql,
+        sentinel_kql: sentinelKql,
+        cql: cqlQuery,
         artifacts: {
-          wazuh_xml: `<!-- Wazuh Custom Rule (ID: ${p.rule_id || '100025'}) -->\n<group name="sysmon,windows,">\n  <rule id="${p.rule_id || '100025'}" level="10">\n    <if_group>windows</if_group>\n    <description>${p.title}</description>\n    <mitre>\n      <id>${p.technique}</id>\n    </mitre>\n  </rule>\n</group>`,
-          splunk_spl: `index=windows sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" | where CommandLine LIKE "%${p.technique}%" | table _time, host, user, CommandLine`,
-          sentinel_kql: `DeviceProcessEvents\n| where Timestamp > ago(24h)\n| where ProcessCommandLine has "${p.technique}"\n| project Timestamp, DeviceName, AccountName, ProcessCommandLine`,
-          elastic_eql: `process where process.command_line != null and string_contains(process.command_line, "${p.technique}")`,
-          cql: `#event_simpleName=/ProcessRollup2/\n| CommandLine=/${p.technique}/i\n| table([@timestamp, ComputerName, UserName, CommandLine])`
+          wazuh_xml: wazuhXml,
+          splunk_spl: splunkSpl,
+          sentinel_kql: sentinelKql,
+          elastic_eql: elasticEql,
+          cql: cqlQuery
         }
       };
     }
@@ -1816,7 +2008,8 @@ function handleDemoApi(method, path, body) {
     }
     if (action === 'reject') {
       p.status = 'rejected';
-      p.rejected_reason = (body && body.reason) || 'Rejected by operator';
+      p.reject_reason = (body && body.reason) || 'Rejected by operator';
+      p.rejected_reason = p.reject_reason;
       toast('Demo Sandbox: Proposal dismissed (simulated)');
       return { ok: true };
     }
@@ -1834,12 +2027,26 @@ function handleDemoApi(method, path, body) {
       p.status = 'validated';
       p.validated_at = (body && body.validated_at) || new Date().toISOString();
       p.validation_notes = (body && body.notes) || 'Validated via demo sandbox';
+      p.validation = {
+        rule_id: (body && body.rule_id) || p.rule_id || '100025',
+        attack: (body && body.attack) || `Atomic Red Team ${p.technique}`,
+        fired_at: (body && body.fired_at) || new Date().toISOString(),
+        evidence_url: (body && body.evidence_url) || '',
+        recorded_by: 'operator',
+        recorded_at: new Date().toISOString()
+      };
       toast('Demo Sandbox: Validation evidence recorded (simulated)');
       return { ok: true };
     }
     if (action === 'notes') {
-      p.notes = (p.notes || []).concat([(body && body.text) || '']);
-      return { ok: true };
+      const noteObj = {
+        id: 'note-' + Date.now(),
+        author: 'operator',
+        ts: new Date().toISOString(),
+        text: (body && body.text) || ''
+      };
+      p.notes = (p.notes || []).concat([noteObj]);
+      return { ok: true, note: noteObj };
     }
     if (action === 'run-validation') {
       toast('Demo Sandbox: Validation workflow dispatched on GitHub Actions (simulated)');
@@ -1848,8 +2055,11 @@ function handleDemoApi(method, path, body) {
     if (action === 'simulate-alert') {
       return {
         success: true,
+        proposal_id: p.id,
         rule_id: p.rule_id || '100025',
         technique: p.technique || 'T1059.001',
+        fired_at: new Date().toISOString(),
+        soar_delivered: true,
         alert: {
           timestamp: new Date().toISOString(),
           rule: {
@@ -1905,7 +2115,7 @@ function handleDemoApi(method, path, body) {
       reasoning: (body && body.reasoning) || '',
       status: 'pending',
       origin: 'human',
-      author: (body && body.author) || 'operator',
+      author: (body && (body.submitted_by || body.author)) || 'operator',
       created_at: new Date().toISOString(),
       pr_number: prNum,
       pr_url: 'https://github.com/Ctum0/detection-platform/pull/' + prNum,
@@ -1924,13 +2134,15 @@ function handleDemoApi(method, path, body) {
       detail: 'Detection Gap Analyst analyzing coverage gaps and drafting Sigma rule',
       http_status: 200
     });
-    DEMO_STATE.activity.unshift({
+    DEMO_STATE.activity.activity.unshift({
       id: 'act-' + Math.random().toString(36).slice(2, 6),
       actor: 'operator',
       action: 'propose.triggered',
+      ts: new Date().toISOString(),
       created_at: new Date().toISOString(),
       detail: tid + ': Dispatched via n8n webhook'
     });
+    DEMO_STATE.activity.total = DEMO_STATE.activity.activity.length;
     // Schedule simulated completion after 3.5 seconds
     setTimeout(() => {
       const trg = DEMO_STATE.triggers.find(t => t.id === tid);
@@ -1940,7 +2152,7 @@ function handleDemoApi(method, path, body) {
         id: 'prop-ai-' + Math.random().toString(36).slice(2, 7),
         title: 'Suspicious PowerShell Download Cradle',
         technique: 'T1059.001',
-        sigma_yaml: `title: Suspicious PowerShell Download Cradle\nid: b201a052-e4e1-4561-bf99-887766554433\nstatus: production\ndescription: Detects suspicious PowerShell cradle commands downloading remote payloads\nauthor: Detection Gap Analyst\ndate: 2026-10-18\nlogsource:\n  category: process_creation\n  product: windows\ndetection:\n  selection:\n    Image|endswith: '\\\\powershell.exe'\n    CommandLine|contains:\n      - 'DownloadString'\n      - 'DownloadFile'\n      - 'Invoke-WebRequest'\n  condition: selection\nlevel: high\ntags:\n  - attack.execution\n  - attack.t1059.001`,
+        sigma_yaml: `title: Suspicious PowerShell Download Cradle\nid: b201a052-e4e1-4561-bf99-887766554433\nstatus: stable\ndescription: Detects suspicious PowerShell cradle commands downloading remote payloads\nauthor: Detection Gap Analyst\ndate: 2026-10-18\nlogsource:\n  category: process_creation\n  product: windows\ndetection:\n  selection:\n    Image|endswith: '\\\\powershell.exe'\n    CommandLine|contains:\n      - 'DownloadString'\n      - 'DownloadFile'\n      - 'Invoke-WebRequest'\n  condition: selection\nlevel: high\ntags:\n  - attack.execution\n  - attack.t1059.001`,
         reasoning: 'Generated autonomously by Detection Gap Analyst in response to missing execution telemetry.',
         status: 'pending',
         origin: 'ai',
@@ -1951,13 +2163,15 @@ function handleDemoApi(method, path, body) {
         branch: 'agent/t1059-001'
       };
       DEMO_STATE.proposals.unshift(aiProp);
-      DEMO_STATE.activity.unshift({
+      DEMO_STATE.activity.activity.unshift({
         id: 'act-' + Math.random().toString(36).slice(2, 6),
         actor: 'agent',
         action: 'propose.created',
+        ts: new Date().toISOString(),
         created_at: new Date().toISOString(),
         detail: 'AI agent submitted PR #' + prNum + ' for T1059.001'
       });
+      DEMO_STATE.activity.total = DEMO_STATE.activity.activity.length;
       toast('AI Agent completed: PR #' + prNum + ' added to Review Queue!');
       renderShell();
       renderView();
@@ -1980,6 +2194,12 @@ function enterDemoSandbox() {
 
 function exitDemoSandbox() {
   S.demo = false;
+  try { sessionStorage.removeItem('demoMode'); } catch (_) {}
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('demo');
+    history.replaceState(null, '', u.pathname + (u.hash.includes('demo') ? '#/overview' : u.hash));
+  } catch (_) {}
   $('demoBanner').hidden = true;
   showGate('');
 }
@@ -2033,7 +2253,15 @@ async function api(method, path, body) {
   });
   if (r.status === 401) { showGate('Session token was rejected. Enter it again.'); throw new AuthError('unauthorized'); }
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'HTTP ' + r.status);
+  if (!r.ok) {
+    let msg = 'HTTP ' + r.status;
+    if (typeof data.detail === 'string') {
+      msg = data.detail;
+    } else if (Array.isArray(data.detail)) {
+      msg = data.detail.map(e => (e.loc ? e.loc.slice(-1)[0] + ': ' : '') + e.msg).join(', ');
+    }
+    throw new Error(msg);
+  }
   return data;
 }
 
@@ -2083,6 +2311,10 @@ function getTheme() {
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   try { localStorage.setItem('consoleTheme', theme); } catch (_) {}
+  try {
+    const metaCs = document.querySelector('meta[name="color-scheme"]');
+    if (metaCs) metaCs.setAttribute('content', theme);
+  } catch (_) {}
   updateThemeIcon();
 }
 function toggleTheme() {
@@ -2164,14 +2396,21 @@ function covItems() {
 
 /* ================= router ================= */
 function parseHash() {
-  const raw = location.hash.replace(/^#\/?/, '');
-  const [path, query] = raw.split('?');
-  const params = new URLSearchParams(query || '');
-  const parts = (path || '').split('/');
-  const view = VIEWS.includes(parts[0]) ? parts[0] : 'overview';
-  const sel = view === 'queue' && parts[1] && !parts[1].startsWith('tab=') ? decodeURIComponent(parts[1]) : null;
-  const tab = params.get('tab') || null;
-  return { view, sel, tab };
+  try {
+    const raw = location.hash.replace(/^#\/?/, '');
+    const [path, query] = raw.split('?');
+    const params = new URLSearchParams(query || '');
+    const parts = (path || '').split('/');
+    const view = VIEWS.includes(parts[0]) ? parts[0] : 'overview';
+    let sel = null;
+    if (view === 'queue' && parts[1] && !parts[1].startsWith('tab=')) {
+      try { sel = decodeURIComponent(parts[1]); } catch (_) { sel = parts[1]; }
+    }
+    const tab = params.get('tab') || null;
+    return { view, sel, tab };
+  } catch (_) {
+    return { view: 'overview', sel: null, tab: null };
+  }
 }
 function go(view, sel, tab) {
   let h = '#/' + view;
@@ -2362,7 +2601,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTi
 function filtered() {
   const tab = TABS.find(t => t[0] === S.tab) || TABS[0];
   const needle = S.q.toLowerCase();
-  const matchQ = p => (!needle || ['title', 'technique', 'reasoning', 'submitted_by', 'slug'].some(f => String(p[f] || '').toLowerCase().includes(needle)));
+  const matchQ = p => (!needle || ['title', 'technique', 'reasoning', 'submitted_by', 'slug', 'rule_id', 'id'].some(f => String(p[f] || '').toLowerCase().includes(needle)) || (p.pr_number && String(p.pr_number).includes(needle)));
   return S.proposals.filter(p => {
     if (tab[0] === 'human') return (p.origin === 'human') && matchQ(p);
     if (tab[0] === 'ai') return (p.origin === 'ai' || !p.origin) && matchQ(p);
@@ -2377,14 +2616,15 @@ function renderTabs() {
     let n;
     if (key === 'human') n = humanCount;
     else if (key === 'ai') n = aiCount;
-    else n = sts ? sts.reduce((a, s) => a + (c[s] || 0), 0) : Object.values(c).reduce((a, b) => a + b, 0);
+    else if (key === 'all') n = S.proposals.length;
+    else n = sts ? sts.reduce((a, s) => a + (c[s] || 0), 0) : S.proposals.length;
     return `<button type="button" role="tab" data-tab="${key}" aria-selected="${S.tab === key}">${label}<span class="n">${n}</span></button>`;
   }).join('');
 }
 function renderQueue() {
   if (S.sel) {
     const selProp = S.proposals.find(x => x.id === S.sel);
-    if (selProp && !filtered().some(x => x.id === S.sel)) {
+    if (selProp && !filtered().some(x => x.id === S.sel) && !S.q) {
       if (selProp.status === 'merged') S.tab = 'merged';
       else if (selProp.status === 'validated') S.tab = 'validated';
       else if (selProp.status === 'rejected') S.tab = 'rejected';
@@ -2447,6 +2687,12 @@ async function loadArtifacts(id) {
   if (S.artCache[id]) return;
   try {
     const data = await api('GET', `/api/proposals/${encodeURIComponent(id)}/artifacts`);
+    if (data && data.artifacts) {
+      if (!data.wazuh_xml) data.wazuh_xml = data.artifacts.wazuh_xml;
+      if (!data.splunk_spl) data.splunk_spl = data.artifacts.splunk_spl;
+      if (!data.kql) data.kql = data.artifacts.sentinel_kql || data.artifacts.kql;
+      if (!data.sigma_yaml) data.sigma_yaml = data.artifacts.sigma_yaml;
+    }
     const p = findP(id);
     if (p && p.sigma_yaml) {
       try {
@@ -2600,7 +2846,9 @@ function detailHtml(p) {
       const label = st === 'queued_for_conversion' ? 'Queued' : sentence(st);
       depPill = `<span class="pill ${cls}" title="${esc(dep.detail || '')}"><span class="dot${pulse}"></span>${esc(label)}</span>`;
       if (isProgress) {
-        setTimeout(() => loadDeploymentStatus(p.id, true), 3500);
+        if (!S.depTimers) S.depTimers = {};
+        clearTimeout(S.depTimers[p.id]);
+        S.depTimers[p.id] = setTimeout(() => loadDeploymentStatus(p.id, true), 3500);
       }
     }
   }
@@ -2616,7 +2864,9 @@ function detailHtml(p) {
       const text = ci.state === 'passed' ? 'CI Green' : (ci.state === 'running' ? 'CI Running' : (ci.state === 'failed' ? 'CI Failed' : 'No CI'));
       ciPill = `<span class="pill ${cls}" title="${esc(ci.detail || '')}"><span class="dot${pulse}"></span>${esc(text)}</span>`;
       if (ci.state === 'running') {
-        setTimeout(() => loadCiStatus(p.id, true), 3500);
+        if (!S.ciTimers) S.ciTimers = {};
+        clearTimeout(S.ciTimers[p.id]);
+        S.ciTimers[p.id] = setTimeout(() => loadCiStatus(p.id, true), 3500);
       }
     }
   }
@@ -2668,8 +2918,13 @@ function detailHtml(p) {
       <pre class="code${expanded ? ' expanded' : ''}" id="code-${id}">${activeCode}</pre>
     </div>
     <div class="sec"><div class="sec-title">Notes${notes.length ? ` <span class="n">${notes.length}</span>` : ''}</div>
-      ${notes.length ? '<div class="notes">' + notes.map(n => `<div class="note"><span class="avatar" aria-hidden="true">${esc(String(n.author || '?').slice(0, 2))}</span>
-        <div><div class="meta"><b>${esc(n.author)}</b> · <span title="${esc(fmtTs(n.ts))}">${esc(ago(n.ts))}</span></div><div class="text">${esc(n.text)}</div></div></div>`).join('') + '</div>' : ''}
+      ${notes.length ? '<div class="notes">' + notes.map(n => {
+        const author = typeof n === 'object' ? (n.author || 'operator') : 'operator';
+        const ts = typeof n === 'object' ? (n.ts || p.created_at) : p.created_at;
+        const text = typeof n === 'object' ? (n.text || '') : String(n);
+        return `<div class="note"><span class="avatar" aria-hidden="true">${esc(author.slice(0, 2))}</span>
+        <div><div class="meta"><b>${esc(author)}</b> · <span title="${esc(fmtTs(ts))}">${esc(ago(ts))}</span></div><div class="text">${esc(text)}</div></div></div>`;
+      }).join('') + '</div>' : ''}
       <div class="compose"><label class="sr-only" for="nt-${id}">Add a note</label>
         <textarea class="input" id="nt-${id}" data-draft="note:${id}" maxlength="2000" rows="2" placeholder="Add a note: blocked on ART run, FP risk on admin hosts…">${esc(draft('note:' + p.id))}</textarea>
         <button class="btn btn-ghost" type="button" data-act="note" data-id="${id}"${busy}>${icon('note')}Add note</button></div></div>
@@ -2727,7 +2982,7 @@ function exportAttackNavigatorLayer() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast('Exported MITRE ATT&CK Navigator Layer JSON');
 }
 
@@ -2738,6 +2993,10 @@ function generatePurpleTeamReport() {
   const none = items.filter(i => i.lv !== 'ok' && i.lv !== 'warn');
   const total = items.length || 1;
   const covPct = Math.round((ok.length / total) * 100);
+
+  const covCols = ((S.coverage && S.coverage.columns) || []).map(c => String(c).toLowerCase());
+  const iRule = covCols.findIndex(c => c.includes('wazuh rule') || c.includes('rule id'));
+  const iSrc = covCols.findIndex(c => c.includes('log source') || c.includes('data source') || c.includes('telemetry'));
 
   const tactics = [
     { id: 'Execution', name: 'Execution' },
@@ -2770,8 +3029,8 @@ function generatePurpleTeamReport() {
   }).join('');
 
   const evidenceRows = items.map(i => {
-    const ruleId = i.row && Array.isArray(i.row) ? (i.row[5] || i.row[0]) : (i.id || '');
-    const src = i.row && Array.isArray(i.row) ? (i.row[3] || 'Sysmon') : 'Sysmon';
+    const ruleId = i.row && Array.isArray(i.row) && iRule >= 0 ? (i.row[iRule] || '') : (i.row && Array.isArray(i.row) ? (i.row[6] || i.row[0]) : (i.id || ''));
+    const src = i.row && Array.isArray(i.row) && iSrc >= 0 ? (i.row[iSrc] || 'Sysmon') : (i.row && Array.isArray(i.row) ? (i.row[5] || 'Sysmon') : 'Sysmon');
     const lvColor = i.lv === 'ok' ? '#059669' : i.lv === 'warn' ? '#d97706' : '#94a3b8';
     const lvBadge = i.lv === 'ok' ? 'VALIDATED' : i.lv === 'warn' ? 'IN PROGRESS' : 'UNTESTED';
     return `<tr>
@@ -3195,7 +3454,7 @@ function proposalLink(pid) {
 }
 function renderRuns() {
   if (!S.triggers) return;
-  const ts = S.triggers.triggers || [];
+  const ts = Array.isArray(S.triggers) ? S.triggers : (S.triggers.triggers || []);
   if (!ts.length) {
     $('runsTable').innerHTML = emptyHtml('bot', 'No agent runs yet.', 'Request a proposal to start the AI detection engineer. A run reports back when the n8n workflow echoes its trigger_id.',
       `<br><button class="btn btn-primary" type="button" data-request>${icon('plus')}Request proposal</button>`);
@@ -3311,7 +3570,13 @@ const actions = {
     if (r) { S.sel = null; history.replaceState(null, '', '#/queue'); renderQueue(); }
   },
   back() {
-    if (S.prevRoute && S.prevRoute !== location.hash) history.back(); else go('queue');
+    if (S.view === 'queue' && S.sel) {
+      S.sel = null;
+      go('queue', null, S.tab);
+      return;
+    }
+    if (S.prevRoute && S.prevRoute !== location.hash) history.back();
+    else go('queue');
   },
   async retry(id) { await run(id, () => api('POST', `/api/proposals/${encodeURIComponent(id)}/retry`), 'Retrying merge'); },
   async reject(id) {
@@ -3684,6 +3949,7 @@ function showSimulationModal(res) {
   modal.hidden = false;
   $('simCloseBtn').onclick = () => { modal.hidden = true; };
   $('simDismissBtn').onclick = () => { modal.hidden = true; };
+  modal.onclick = (e) => { if (e.target === modal) modal.hidden = true; };
 
   let activeTab = 'xml';
   const tabsWrap = $('simPlayTabs');
@@ -3759,14 +4025,14 @@ async function renderStudio() {
     if (!pId) return false;
     const cleanId = String(pId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const found = state.presets.find(p =>
-      p.id.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId ||
-      p.slug.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId ||
+      (p.id && p.id.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId) ||
+      (p.slug && p.slug.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId) ||
       (p.technique && p.technique.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId)
     );
     if (found) {
       studioYaml.value = found.yaml;
       const ttpSel = $('studioTtpSelect');
-      if (ttpSel) ttpSel.value = found.id;
+      if (ttpSel) ttpSel.value = found.id || found.slug || '';
       toast(`Loaded ${found.technique ? found.technique + ': ' : ''}${found.title}`);
       translate();
       return true;
@@ -3880,8 +4146,8 @@ async function renderStudio() {
 
   studioCopyBtn.addEventListener('click', () => {
     const text = studioOutput.textContent;
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => toast('Query copied to clipboard!'));
+    if (text && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('Query copied to clipboard!')).catch(() => toast('Failed to copy', false));
     }
   });
 
@@ -3969,8 +4235,8 @@ async function renderStudio() {
         const res = await api('POST', '/api/rules/submit', {
           sigma_yaml: y,
           slug: slug,
-          author: author,
-          reason: reason
+          submitted_by: author,
+          reasoning: reason
         });
         resBox.innerHTML = `<div class="callout ok">${icon('check')}<div><b>PR #${res.pr_number} created:</b> <a href="${safeUrl(res.pr_url)}" target="_blank" rel="noopener noreferrer">${esc(res.branch)}</a>. Navigating to review queue...</div></div>`;
         toast('Rule submitted as PR #' + res.pr_number + ' - CI triggered');
@@ -4053,6 +4319,12 @@ $('agentModalViewRunsBtn').addEventListener('click', () => {
   hideAgentModal();
   go('runs');
 });
+const agModal = $('agentModal');
+if (agModal) {
+  agModal.addEventListener('click', e => {
+    if (e.target === agModal) hideAgentModal();
+  });
+}
 
 async function requestProposal(targetTechnique, targetName) {
   const btns = document.querySelectorAll('[data-request]');
@@ -4095,8 +4367,9 @@ async function exportActivity(fmt) {
         mime = 'application/json';
       } else {
         mime = 'text/csv';
-        content = 'id,actor,action,created_at,detail\n' + DEMO_STATE.activity.map(a =>
-          `"${a.id}","${a.actor}","${a.action}","${a.created_at}","${(a.detail||'').replace(/"/g, '""')}"`
+        const acts = Array.isArray(DEMO_STATE.activity) ? DEMO_STATE.activity : ((DEMO_STATE.activity && DEMO_STATE.activity.activity) || []);
+        content = 'id,actor,action,created_at,detail\n' + acts.map(a =>
+          `"${a.id}","${a.actor}","${a.action}","${a.created_at || a.ts || ''}","${(a.detail||'').replace(/"/g, '""')}"`
         ).join('\n');
       }
       const blob = new Blob([content], { type: mime });

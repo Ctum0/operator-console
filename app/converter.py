@@ -73,13 +73,16 @@ def _pcre2_alt(values: list[str]) -> str:
 
 def convert_to_wazuh_xml(doc: dict[str, Any], rule_id: int = 100099, level: int = 8) -> str:
     """Translate parsed Sigma doc into a standalone Wazuh custom rule XML block."""
-    logsource = doc.get("logsource", {})
-    detection = doc.get("detection", {})
+    logsource = doc.get("logsource") or {}
+    detection = doc.get("detection") or {}
     category = str(logsource.get("category", "")).lower()
     service = str(logsource.get("service", "")).lower()
 
+    lvl_map = {"low": 3, "medium": 6, "high": 10, "critical": 13}
+    rule_level = lvl_map.get(str(doc.get("level", "")).lower(), level)
+
     root = ET.Element("group", name="custom_rules,")
-    rule_el = ET.SubElement(root, "rule", id=str(rule_id), level=str(level))
+    rule_el = ET.SubElement(root, "rule", id=str(rule_id), level=str(rule_level))
 
     # Parent anchor
     if category in _SYSMON_CATEGORIES:
@@ -102,6 +105,7 @@ def convert_to_wazuh_xml(doc: dict[str, Any], rule_id: int = 100099, level: int 
     for name, sel in detection.items():
         if name == "condition" or not isinstance(sel, dict):
             continue
+        is_filter = name.lower().startswith("filter")
         for key, val in sel.items():
             field_name = key.split("|")[0]
             op = key.split("|")[1] if "|" in key else "exact"
@@ -109,6 +113,8 @@ def convert_to_wazuh_xml(doc: dict[str, Any], rule_id: int = 100099, level: int 
             
             f_el = ET.SubElement(rule_el, "field", name=wazuh_field)
             f_el.set("type", "pcre2")
+            if is_filter:
+                f_el.set("negate", "yes")
 
             val_list = val if isinstance(val, list) else [val]
             if op == "contains":
@@ -203,13 +209,15 @@ def translate_sigma_rule(raw_yaml: str) -> dict[str, Any]:
 
             # CrowdStrike LogScale CQL
             try:
-                sel = (parsed.get("detection") or {}).get("selection") or {}
                 cql_parts = []
-                for k, v in sel.items():
-                    f = k.split("|")[0]
-                    vals = v if isinstance(v, list) else [v]
-                    patt = "|".join([re.escape(str(x)) for x in vals])
-                    cql_parts.append(f"{f}=/{patt}/i")
+                detection_dict = parsed.get("detection") or {}
+                for sel_name, sel in detection_dict.items():
+                    if sel_name.startswith("selection") and isinstance(sel, dict):
+                        for k, v in sel.items():
+                            f = k.split("|")[0]
+                            vals = v if isinstance(v, list) else [v]
+                            patt = "|".join([re.escape(str(x)) for x in vals])
+                            cql_parts.append(f"{f}=/{patt}/i")
                 filt = " and ".join(cql_parts) if cql_parts else "true"
                 queries["cql"] = (
                     "// CrowdStrike LogScale CQL\n"
@@ -226,10 +234,25 @@ def translate_sigma_rule(raw_yaml: str) -> dict[str, Any]:
                 if b not in queries:
                     queries[b] = f"Translation error: {exc}"
 
+    # Extract clean MITRE ATT&CK technique code (e.g., T1059.001)
+    tags = parsed.get("tags") or []
+    extracted_tech = "T1000"
+    if isinstance(tags, list):
+        for t in tags:
+            s = str(t).strip().lower()
+            if s.startswith("attack.t"):
+                code = s[len("attack."):].upper()
+                if re.fullmatch(r"^T\d{4}(?:\.\d{3})?$", code):
+                    extracted_tech = code
+                    break
+            elif s.startswith("t") and re.fullmatch(r"^T\d{4}(?:\.\d{3})?$", s.upper()):
+                extracted_tech = s.upper()
+                break
+
     return {
         "valid": True,
         "title": parsed.get("title", ""),
-        "technique": (parsed.get("tags") or ["T1000"])[0],
+        "technique": extracted_tech,
         "logsource": parsed.get("logsource", {}),
         "queries": queries,
         "backends": backends_available,
@@ -385,7 +408,7 @@ level: high
         "slug": "clear_windows_event_logs",
         "yaml": """title: Clear Windows Event Logs via Wevtutil
 id: f9b234cd-6e5f-5a4b-9c2d-0e3f4a5b6c7d
-status: production
+status: stable
 description: Detects attempts to clear Windows event logs using wevtutil command-line utility
 author: Sithum (Ctum0)
 date: 2026-10-18

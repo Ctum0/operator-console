@@ -297,6 +297,10 @@ async def lifespan(_app: FastAPI):
     if pending:
         jlog("info", "shutdown_waiting_background_tasks", {"count": len(pending)})
         await asyncio.wait(pending, timeout=10.0)
+    if hasattr(_client, "aclose"):
+        await _client.aclose()
+    if hasattr(_wazuh_client, "aclose"):
+        await _wazuh_client.aclose()
 
 
 app = FastAPI(
@@ -331,6 +335,8 @@ async def _auth(request: Request, call_next):
     if request.url.path.startswith("/api/"):
         header = request.headers.get("authorization", "")
         supplied = header[len("Bearer "):] if header.lower().startswith("bearer ") else ""
+        if not supplied:
+            supplied = request.query_params.get("token") or request.query_params.get("access_token") or ""
         ok = False
         if supplied and CONSOLE_TOKEN:
             try:
@@ -1082,6 +1088,7 @@ async def add_note(pid: str, payload: NoteIn):
 
 
 @app.post("/api/proposals/{pid}/validated")
+@app.post("/api/proposals/{pid}/validate")
 async def mark_validated(pid: str, payload: ValidatedIn):
     """Close the purple-team loop: record that the merged, deployed rule fired
     on a real attack. Only a merged proposal can be validated."""
@@ -1214,16 +1221,21 @@ async def simulate_alert(pid: str):
     soar_delivered = False
     if N8N_PROPOSE_WEBHOOK:
         try:
+            headers = {"Content-Type": "application/json"}
+            if N8N_WEBHOOK_SECRET:
+                headers["X-Webhook-Secret"] = N8N_WEBHOOK_SECRET
             r = await _client.post(
                 N8N_PROPOSE_WEBHOOK,
                 json={"alert": simulated_event, "source": "operator-console-simulation"},
+                headers=headers,
                 timeout=4.0,
             )
             soar_delivered = r.is_success
         except Exception:
             pass
 
-    _log_activity("operator", "alert.simulated", f"Simulated telemetry fired alert for rule {rule_id} ({technique})", pid)
+    async with _file_lock:
+        _log_activity("operator", "alert.simulated", f"Simulated telemetry fired alert for rule {rule_id} ({technique})", pid)
 
     return {
         "success": True,
@@ -1545,7 +1557,8 @@ async def _fetch_artifacts(identifier: str, prop: dict[str, Any] | None = None) 
         rule_id = (prop.get("validation") or {}).get("rule_id")
         title = prop.get("title", "")
     else:
-        slug = ident_lower.replace(".yml", "").replace(".spl", "")
+        clean_id = Path(identifier).name.lower().replace(".yml", "").replace(".spl", "")
+        slug = clean_id if _SLUG_RE.fullmatch(clean_id) else ""
 
     sigma_yaml = ""
     wazuh_xml = ""
@@ -1935,6 +1948,7 @@ def _invalidate_health() -> None:
 
 
 @app.get("/api/health/pipeline")
+@app.get("/api/health")
 async def pipeline_health():
     now = time.time()
     cached = _health_cache["payload"]
