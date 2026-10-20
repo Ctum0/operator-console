@@ -1247,7 +1247,7 @@ html.locked .gate[hidden] { display:grid !important; }
         <span class="badge badge-accent">Interactive Demo Sandbox</span>
         <span>Viewing live simulated telemetry &amp; detection engine. Changes are safely sandboxed.</span>
       </div>
-      <button class="btn btn-ghost btn-sm" id="demoExitBtn" type="button">Sign In with Token</button>
+      <button class="btn btn-ghost btn-sm" id="demoExitBtn" type="button"><svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Sign In with Token</button>
     </div>
 
     <header class="mobilebar">
@@ -1259,7 +1259,7 @@ html.locked .gate[hidden] { display:grid !important; }
         <button class="icon-btn" id="mobileThemeBtn" type="button" title="Toggle theme" aria-label="Toggle theme">
           <svg class="ic" id="mobileThemeIcon" viewBox="0 0 16 16" aria-hidden="true"></svg>
         </button>
-        <button class="btn btn-primary btn-sm" type="button" data-request>Request</button>
+        <button class="btn btn-primary btn-sm" type="button" data-request><svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>Request</button>
       </div>
     </header>
 
@@ -1644,6 +1644,92 @@ html.locked .gate[hidden] { display:grid !important; }
   </div>
 </div>
 
+<!-- REQUEST PROPOSAL / MITRE TTP DISPATCH MODAL -->
+<div class="modal-backdrop" id="requestModal" hidden>
+  <div class="modal-card" style="max-width:540px;">
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="pulse-icon" style="background:linear-gradient(135deg, rgba(99,102,241,0.3), rgba(6,182,212,0.3)); color:var(--accent-text);">
+          <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9h.01M10 9h.01M1.5 8.5v2M14.5 8.5v2"/></svg>
+        </div>
+        <div>
+          <h2 style="font-size:16px; font-weight:700; color:var(--ink);">Dispatch AI Detection Engineer</h2>
+          <span style="font-size:12px; color:var(--ink-3);">Target a specific MITRE ATT&amp;CK Technique or auto-triage matrix gaps</span>
+        </div>
+      </div>
+      <button class="icon-btn" id="requestModalCloseBtn" type="button" aria-label="Close modal">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:22px 24px;">
+      <div class="field" style="margin-bottom:14px;">
+        <label for="reqTtpSelect" style="font-size:12px; font-weight:600; color:var(--ink);">Target MITRE ATT&amp;CK Technique</label>
+        <select class="input" id="reqTtpSelect" style="font-size:13px; font-weight:500;">
+          <option value="">Auto-Triage (Prioritize Next Uncovered Matrix Gap)</option>
+          <optgroup label="Execution">
+            <option value="T1059.001">T1059.001 · PowerShell Scripting / Download Cradles</option>
+            <option value="T1059.003">T1059.003 · Windows Command Shell</option>
+            <option value="T1059.004">T1059.004 · Unix Shell Execution</option>
+            <option value="T1204.002">T1204.002 · Malicious File Execution</option>
+          </optgroup>
+          <optgroup label="Persistence">
+            <option value="T1547.001">T1547.001 · Registry Run Keys / Startup Folder</option>
+            <option value="T1053.005">T1053.005 · Scheduled Task / Job</option>
+            <option value="T1543.003">T1543.003 · Windows Service Creation</option>
+            <option value="T1136.001">T1136.001 · Local Account Creation</option>
+          </optgroup>
+          <optgroup label="Privilege Escalation">
+            <option value="T1548.002">T1548.002 · Bypass User Account Control (UAC)</option>
+            <option value="T1068">T1068 · Exploitation for Privilege Escalation</option>
+          </optgroup>
+          <optgroup label="Defense Evasion">
+            <option value="T1685.005">T1685.005 · Clear Windows Event Logs (Wevtutil)</option>
+            <option value="T1070.004">T1070.004 · File Deletion</option>
+            <option value="T1036.005">T1036.005 · Match Legitimate Name or Location</option>
+            <option value="T1562.001">T1562.001 · Disable or Modify Security Tools</option>
+          </optgroup>
+          <optgroup label="Credential Access">
+            <option value="T1003.001">T1003.001 · LSASS Process Memory Dump</option>
+            <option value="T1555.003">T1555.003 · Web Browser Credential Store</option>
+            <option value="T1110.001">T1110.001 · Password Guessing / Brute Force</option>
+          </optgroup>
+          <optgroup label="Discovery">
+            <option value="T1082">T1082 · System Information Discovery</option>
+            <option value="T1087.001">T1087.001 · Local Account Discovery</option>
+            <option value="T1046">T1046 · Network Service Scanning</option>
+          </optgroup>
+          <optgroup label="Lateral Movement">
+            <option value="T1021.001">T1021.001 · Remote Desktop Protocol (RDP)</option>
+            <option value="T1021.002">T1021.002 · SMB/Windows Admin Shares</option>
+          </optgroup>
+          <optgroup label="Command &amp; Control">
+            <option value="T1071.001">T1071.001 · Web Protocols (HTTP/HTTPS)</option>
+            <option value="T1573.001">T1573.001 · Symmetric Encrypted Channel</option>
+          </optgroup>
+          <optgroup label="Impact">
+            <option value="T1486">T1486 · Data Encrypted for Impact (Ransomware)</option>
+            <option value="T1489">T1489 · Service Stop</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:18px;">
+        <label for="reqReason" style="font-size:12px; font-weight:600; color:var(--ink);">Operator Guidance &amp; Threat Context <small>(optional)</small></label>
+        <textarea class="input" id="reqReason" rows="2" placeholder="e.g. Focus on living-off-the-land command lines bypassing execution policy..."></textarea>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; color:var(--ink-4);">Dispatches to n8n webhook</span>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-ghost btn-sm" id="reqModalCancelBtn" type="button">Cancel</button>
+          <button class="btn btn-primary btn-sm" id="reqModalSubmitBtn" type="button">
+            <svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.5 1.5l-5 7h4l-1.5 6 6.5-8h-4z"/></svg>
+            Dispatch Agent
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- AGENT TRIGGER PROGRESS MODAL -->
 <div class="modal-backdrop" id="agentModal" hidden>
   <div class="modal-card" style="max-width:520px;">
@@ -1682,8 +1768,8 @@ html.locked .gate[hidden] { display:grid !important; }
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
         <span style="font-size:12px; color:var(--ink-4);">Logged in System &gt; Agent runs</span>
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-ghost btn-sm" id="agentModalDismissBtn" type="button">Dismiss</button>
-          <button class="btn btn-primary btn-sm" id="agentModalViewRunsBtn" type="button">View Agent Runs</button>
+          <button class="btn btn-ghost btn-sm" id="agentModalDismissBtn" type="button"><svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>Dismiss</button>
+          <button class="btn btn-primary btn-sm" id="agentModalViewRunsBtn" type="button"><svg class="ic ic-sm" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9h.01M10 9h.01M1.5 8.5v2M14.5 8.5v2"/></svg>View Agent Runs</button>
         </div>
       </div>
     </div>
@@ -2222,11 +2308,14 @@ function handleDemoApi(method, path, body) {
   }
   if (pathname === '/api/trigger/propose') {
     const tid = 'trg-ai-' + Math.random().toString(36).slice(2, 7);
+    const reqTech = (body && body.technique) || 'T1059.001';
+    const reqTac = (body && body.tactic) || 'Execution';
+    const reqReason = (body && body.reason) || `Autonomous rule generation targeting ${reqTech}`;
     DEMO_STATE.triggers.unshift({
       id: tid,
       ts: new Date().toISOString(),
       status: 'sent',
-      detail: 'Detection Gap Analyst analyzing coverage gaps and drafting Sigma rule',
+      detail: `Detection Gap Analyst targeting ${reqTech} (${reqTac})`,
       http_status: 200
     });
     DEMO_STATE.activity.activity.unshift({
@@ -2235,7 +2324,7 @@ function handleDemoApi(method, path, body) {
       action: 'propose.triggered',
       ts: new Date().toISOString(),
       created_at: new Date().toISOString(),
-      detail: tid + ': Dispatched via n8n webhook'
+      detail: tid + ': Dispatched via n8n webhook for ' + reqTech
     });
     DEMO_STATE.activity.total = DEMO_STATE.activity.activity.length;
     // Schedule simulated completion after 3.5 seconds
@@ -2245,17 +2334,17 @@ function handleDemoApi(method, path, body) {
       const prNum = 48 + DEMO_STATE.proposals.length;
       const aiProp = {
         id: 'prop-ai-' + Math.random().toString(36).slice(2, 7),
-        title: 'Suspicious PowerShell Download Cradle',
-        technique: 'T1059.001',
-        sigma_yaml: `title: Suspicious PowerShell Download Cradle\nid: b201a052-e4e1-4561-bf99-887766554433\nstatus: stable\ndescription: Detects suspicious PowerShell cradle commands downloading remote payloads\nauthor: Detection Gap Analyst\ndate: 2026-10-18\nlogsource:\n  category: process_creation\n  product: windows\ndetection:\n  selection:\n    Image|endswith: '\\\\powershell.exe'\n    CommandLine|contains:\n      - 'DownloadString'\n      - 'DownloadFile'\n      - 'Invoke-WebRequest'\n  condition: selection\nlevel: high\ntags:\n  - attack.execution\n  - attack.t1059.001`,
-        reasoning: 'Generated autonomously by Detection Gap Analyst in response to missing execution telemetry.',
+        title: `Detection for ${reqTech} (${reqTac})`,
+        technique: reqTech,
+        sigma_yaml: `title: Detection for ${reqTech}\nid: b201a052-${Math.random().toString(36).slice(2, 6)}-4561-bf99-887766554433\nstatus: stable\ndescription: Detects suspicious activity associated with ${reqTech}\nauthor: Detection Gap Analyst\ndate: 2026-10-18\nlogsource:\n  category: process_creation\n  product: windows\ndetection:\n  selection:\n    CommandLine|contains:\n      - '${reqTech.toLowerCase()}'\n  condition: selection\nlevel: high\ntags:\n  - attack.${reqTac.toLowerCase().replace(/[^a-z0-9]/g, '_')}\n  - attack.${reqTech.toLowerCase()}`,
+        reasoning: reqReason,
         status: 'pending',
         origin: 'ai',
         author: 'Detection Gap Analyst',
         created_at: new Date().toISOString(),
         pr_number: prNum,
         pr_url: 'https://github.com/Ctum0/detection-platform/pull/' + prNum,
-        branch: 'agent/t1059-001'
+        branch: 'agent/' + reqTech.toLowerCase().replace(/[^a-z0-9]/g, '-')
       };
       DEMO_STATE.proposals.unshift(aiProp);
       DEMO_STATE.activity.activity.unshift({
@@ -2264,7 +2353,7 @@ function handleDemoApi(method, path, body) {
         action: 'propose.created',
         ts: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        detail: 'AI agent submitted PR #' + prNum + ' for T1059.001'
+        detail: 'AI agent submitted PR #' + prNum + ' for ' + reqTech
       });
       DEMO_STATE.activity.total = DEMO_STATE.activity.activity.length;
       toast('AI Agent completed: PR #' + prNum + ' added to Review Queue!');
@@ -2326,7 +2415,8 @@ const ICONS = {
   back: '<path d="M10 3.5 5.5 8l4.5 4.5"/>',
   gear: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>',
   user: '<circle cx="8" cy="5" r="3"/><path d="M2.5 14a5.5 5.5 0 0 1 11 0"/>',
-  flame: '<path d="M8.5 1.5c.5 2 2 3 2 5a3.5 3.5 0 0 1-7 0c0-.8.3-1.5.8-2C3 5.3 2 6.8 2 8.5A6 6 0 0 0 8 14.5a6 6 0 0 0 6-6c0-3.5-3-6-5.5-7z"/>',
+  lock: '<rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/>',
+  flame: '<path d="M8.5 1.5c.5 2 2 3 2 5a3.5 3.5 0 0 1-7 0c0-.8.3-1.5.8-2C3 5.3 2 6.8 2 8.5A6 6 0 0 0 8 14.5a6 6 0 0 0 6-6c0-3.5-3-6-5.5-7z" fill="currentColor" fill-opacity="0.25"/>',
   sun: '<circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/>',
   moon: '<path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/>',
   matrix: '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
@@ -2527,6 +2617,11 @@ function applyRoute() {
   if (r.tab && TABS.some(t => t[0] === r.tab)) {
     S.tab = r.tab;
     try { localStorage.setItem('consoleTab', S.tab); } catch (_) {}
+    if (S.q) {
+      S.q = '';
+      const sInp = $('search');
+      if (sInp) sInp.value = '';
+    }
   }
   document.querySelectorAll('.view').forEach(v => { v.hidden = v.dataset.view !== S.view; });
   document.querySelectorAll('[data-nav]').forEach(a => {
@@ -2570,7 +2665,7 @@ function renderOverview() {
   const ok = items.filter(i => i.lv === 'ok').length;
   const firstMerged = S.proposals.find(p => p.status === 'merged');
   const firstValidated = S.proposals.find(p => p.status === 'validated');
-  const mergedHref = firstMerged ? `#/queue/${encodeURIComponent(firstMerged.id)}?tab=merged` : firstValidated ? `#/queue/${encodeURIComponent(firstValidated.id)}?tab=validated` : '#/queue?tab=all';
+  const mergedHref = firstMerged ? `#/queue/${encodeURIComponent(firstMerged.id)}?tab=merged` : firstValidated ? `#/queue/${encodeURIComponent(firstValidated.id)}?tab=validated` : '#/queue?tab=merged';
   const kpi = (href, ic, tint, label, value, sub, subCls) => `<a class="card kpi" href="${href}" style="--tint:${tint}">
       <div class="kpi-label">${icon(ic)}${label}</div><div class="kpi-value">${value}</div>
       <div class="kpi-sub ${subCls || ''}">${sub}</div>${icon(ic, 'kpi-mark')}</a>`;
@@ -2717,9 +2812,10 @@ function renderTabs() {
   }).join('');
 }
 function renderQueue() {
+  const r = parseHash();
   if (S.sel) {
     const selProp = S.proposals.find(x => x.id === S.sel);
-    if (selProp && !filtered().some(x => x.id === S.sel) && !S.q) {
+    if (selProp && !filtered().some(x => x.id === S.sel) && !S.q && !r.tab) {
       if (selProp.status === 'merged') S.tab = 'merged';
       else if (selProp.status === 'validated') S.tab = 'validated';
       else if (selProp.status === 'rejected') S.tab = 'rejected';
@@ -2731,7 +2827,9 @@ function renderQueue() {
   }
   renderTabs();
   const list = filtered();
-  if (!S.sel && isDesktop() && list.length) S.sel = list[0].id;
+  if ((!S.sel || !list.some(x => x.id === S.sel)) && list.length) {
+    if (isDesktop() || !S.sel) S.sel = list[0].id;
+  }
   $('qitems').innerHTML = list.length ? list.map(p => {
     const originPill = p.origin === 'human'
       ? `<span class="pill muted" style="font-size:11px;padding:2px 6px;" title="Human submission">${icon('user', 'ic-sm')}Human</span>`
@@ -3455,7 +3553,7 @@ $('covTable').addEventListener('click', e => {
   if (tBtn) {
     const tech = tBtn.dataset.covTarget;
     const name = tBtn.dataset.covName || tech;
-    requestProposal(tech, name);
+    openRequestModal(tech, name);
     return;
   }
   const b = e.target.closest('[data-cov]') || (!e.target.closest('a, button') && e.target.closest('[data-cov-row]'));
@@ -4135,6 +4233,47 @@ async function renderStudio() {
     return false;
   }
 
+  function generateDynamicSigma(ttpCode) {
+    const cleanCode = String(ttpCode || '').toUpperCase().trim();
+    const covItem = covItems().find(i => i.code === cleanCode || i.id === cleanCode);
+    const techName = covItem ? covItem.name : 'Target Technique Telemetry';
+    const tactic = covItem ? covItem.tactic : 'Execution';
+    const cleanTactic = tactic.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const cleanTech = cleanCode.toLowerCase();
+    const uuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    return `title: Detect ${cleanCode} - ${techName}
+id: ${uuid}
+status: experimental
+description: Custom Sigma rule detecting MITRE ATT&CK ${cleanCode} (${techName})
+references:
+    - https://attack.mitre.org/techniques/${cleanCode.replace('.', '/')}/
+author: Security Operator
+date: ${new Date().toISOString().slice(0, 10)}
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|contains:
+            - '${cleanTech}'
+    condition: selection
+falsepositives:
+    - Legitimate administrative workflows
+level: medium
+tags:
+    - attack.${cleanTactic}
+    - attack.${cleanTech}`;
+  }
+
+  function loadPresetOrGenerate(target) {
+    if (!target) return false;
+    if (loadPreset(target)) return true;
+    studioYaml.value = generateDynamicSigma(target);
+    toast(`Generated template for ${target}`);
+    translate();
+    return true;
+  }
+
   const curParams = new URLSearchParams(location.hash.split('?')[1] || '');
   const urlTtp = curParams.get('ttp') || curParams.get('technique');
 
@@ -4142,13 +4281,13 @@ async function renderStudio() {
     try {
       state.presets = await api('GET', '/api/rules/presets');
       if (urlTtp) {
-        loadPreset(urlTtp);
+        loadPresetOrGenerate(urlTtp);
       } else if (state.presets.length && !studioYaml.value.trim()) {
         studioYaml.value = state.presets[0].yaml;
       }
     } catch (_) {}
   } else if (urlTtp) {
-    loadPreset(urlTtp);
+    loadPresetOrGenerate(urlTtp);
   }
 
   function updateOutput() {
@@ -4386,14 +4525,78 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && $('gate').hidden) {
     e.preventDefault(); if (S.view !== 'queue') go('queue'); setTimeout(() => $('search').focus(), 0);
   }
-  if (e.key === 'Escape' && document.body.classList.contains('nav-open')) { closeNav(); $('menuBtn').focus(); }
+  if (e.key === 'Escape') {
+    const rModal = $('requestModal');
+    if (rModal && !rModal.hidden) { hideRequestModal(); return; }
+    const aModal = $('agentModal');
+    if (aModal && !aModal.hidden) { hideAgentModal(); return; }
+    const sModal = $('simModal');
+    if (sModal && !sModal.hidden) { sModal.hidden = true; return; }
+    if (document.body.classList.contains('nav-open')) { closeNav(); $('menuBtn').focus(); }
+  }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-goto]')) { e.preventDefault(); go('queue', e.target.dataset.goto); }
 });
 document.addEventListener('click', e => {
   const g = e.target.closest('[data-goto]'); if (g) { go('queue', g.dataset.goto); return; }
-  const r = e.target.closest('[data-request]'); if (r) { requestProposal(); return; }
+  const r = e.target.closest('[data-request]'); if (r) { openRequestModal(); return; }
   const x = e.target.closest('[data-export]'); if (x) exportActivity(x.dataset.export);
 });
+
+function openRequestModal(targetTechnique, targetName) {
+  const modal = $('requestModal');
+  if (!modal) return;
+  const sel = $('reqTtpSelect');
+  if (sel) {
+    if (targetTechnique) {
+      let opt = Array.from(sel.options).find(o => o.value.toLowerCase() === targetTechnique.toLowerCase());
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = targetTechnique;
+        opt.textContent = `${targetTechnique} · ${targetName || 'Custom Target'}`;
+        sel.appendChild(opt);
+      }
+      sel.value = opt.value;
+    } else {
+      sel.value = '';
+    }
+  }
+  const reason = $('reqReason');
+  if (reason) reason.value = '';
+  modal.hidden = false;
+  setTimeout(() => { if (sel) sel.focus(); }, 50);
+}
+
+function hideRequestModal() {
+  const modal = $('requestModal');
+  if (modal) modal.hidden = true;
+}
+
+const reqCloseBtn = $('requestModalCloseBtn');
+if (reqCloseBtn) reqCloseBtn.addEventListener('click', hideRequestModal);
+const reqCancelBtn = $('reqModalCancelBtn');
+if (reqCancelBtn) reqCancelBtn.addEventListener('click', hideRequestModal);
+const reqModalEl = $('requestModal');
+if (reqModalEl) {
+  reqModalEl.addEventListener('click', e => {
+    if (e.target === reqModalEl) hideRequestModal();
+  });
+}
+
+const reqSubmitBtn = $('reqModalSubmitBtn');
+if (reqSubmitBtn) {
+  reqSubmitBtn.addEventListener('click', async () => {
+    const sel = $('reqTtpSelect');
+    const reasonEl = $('reqReason');
+    const tech = sel ? sel.value : '';
+    const selectedOpt = sel && sel.selectedOptions && sel.selectedOptions[0];
+    const techName = selectedOpt && tech ? (selectedOpt.textContent.split('·')[1] || '').trim() : '';
+    const optGroup = selectedOpt && selectedOpt.parentElement && selectedOpt.parentElement.tagName === 'OPTGROUP' ? selectedOpt.parentElement.label : '';
+    const reason = reasonEl ? reasonEl.value.trim() : '';
+
+    hideRequestModal();
+    await executeProposalDispatch(tech, optGroup, techName, reason);
+  });
+}
 
 function showAgentModal(tid, targetTechnique, targetName) {
   $('agentRunId').textContent = 'Run ID: ' + (tid || 'trg-active') + (targetTechnique ? ' · Target: ' + targetTechnique : '');
@@ -4421,7 +4624,7 @@ if (agModal) {
   });
 }
 
-async function requestProposal(targetTechnique, targetName) {
+async function executeProposalDispatch(targetTechnique, tactic, targetName, reason) {
   const btns = document.querySelectorAll('[data-request]');
   btns.forEach(b => {
     b.disabled = true;
@@ -4429,8 +4632,11 @@ async function requestProposal(targetTechnique, targetName) {
     b.innerHTML = '<svg class="ic spin" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5" fill="none" stroke="currentColor" stroke-width="2"/></svg> Dispatching...';
   });
   try {
-    const payload = targetTechnique ? { technique: targetTechnique } : undefined;
-    const r = await api('POST', '/api/trigger/propose', payload);
+    const payload = {};
+    if (targetTechnique) payload.technique = targetTechnique;
+    if (tactic) payload.tactic = tactic;
+    if (reason) payload.reason = reason;
+    const r = await api('POST', '/api/trigger/propose', Object.keys(payload).length ? payload : undefined);
     if (r.triggered || r.status === 'sent' || r.trigger_id) {
       toast('Agent run started' + (targetTechnique ? ' for ' + targetTechnique : '') + ' (' + (r.trigger_id || 'active') + ')');
       showAgentModal(r.trigger_id, targetTechnique, targetName);
@@ -4450,6 +4656,10 @@ async function requestProposal(targetTechnique, targetName) {
       });
     }, 2000);
   }
+}
+
+function requestProposal(targetTechnique, targetName) {
+  openRequestModal(targetTechnique, targetName);
 }
 
 async function exportActivity(fmt) {

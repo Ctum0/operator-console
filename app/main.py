@@ -641,6 +641,12 @@ _FIELD_LIMITS = {
 _TECHNIQUE_RE = re.compile(r"^T\d{4}(?:\.\d{3})?$")
 
 
+class ProposeTriggerIn(BaseModel):
+    technique: str | None = None
+    tactic: str | None = None
+    reason: str | None = None
+
+
 class ProposalIn(BaseModel):
     """Registration payload from the AI agent (n8n) or human operator. Field names/types match the
     published contract exactly; constraints only reject payloads that would
@@ -2134,31 +2140,46 @@ def _settle_trigger(tid: str, status: str, detail: str, proposal_id: str | None 
 
 
 @app.post("/api/trigger/propose", status_code=202)
-async def trigger_propose():
+async def trigger_propose(payload: ProposeTriggerIn | None = None):
     if not N8N_PROPOSE_WEBHOOK:
         raise HTTPException(503, "N8N_PROPOSE_WEBHOOK is not configured")
     tid = "trg-" + uuid.uuid4().hex[:10]
     response_snippet = ""
     http_status: int | None = None
+    target_tech = (payload.technique or "").strip().upper() if payload else ""
+    target_tactic = (payload.tactic or "").strip() if payload else ""
+    target_reason = (payload.reason or "").strip() if payload else ""
+    req_body: dict[str, Any] = {
+        "source": "operator-console",
+        "trigger_id": tid,
+        "result_path": f"/api/triggers/{tid}/result",
+    }
+    if target_tech:
+        req_body["technique"] = target_tech
+    if target_tactic:
+        req_body["tactic"] = target_tactic
+    if target_reason:
+        req_body["reason"] = target_reason
     try:
         # trigger_id lets the workflow report back: either echo it in the
         # proposal registration or POST /api/triggers/{id}/result.
         resp = await _client.post(
             N8N_PROPOSE_WEBHOOK,
-            json={"source": "operator-console", "trigger_id": tid,
-                  "result_path": f"/api/triggers/{tid}/result"},
+            json=req_body,
             headers={"Content-Type": "application/json",
                      **({"X-Webhook-Secret": N8N_WEBHOOK_SECRET} if N8N_WEBHOOK_SECRET else {})},
         )
         ok = resp.is_success
         http_status = resp.status_code
-        detail = f"n8n webhook HTTP {resp.status_code}"
+        prefix = f"Targeted {target_tech}: " if target_tech else ""
+        detail = f"{prefix}n8n webhook HTTP {resp.status_code}"
         response_snippet = resp.text[:300]
         if not ok:
             jlog("warning", "trigger_webhook_bad_response", {"http": resp.status_code})
     except (httpx.HTTPError, httpx.InvalidURL) as exc:
         ok = False
-        detail = f"n8n webhook failed: {exc.__class__.__name__}"
+        prefix = f"Targeted {target_tech}: " if target_tech else ""
+        detail = f"{prefix}n8n webhook failed: {exc.__class__.__name__}"
         jlog("warning", "trigger_webhook_failed", {"error": exc.__class__.__name__})
     record: dict[str, Any] = {
         "id": tid,
@@ -2169,6 +2190,7 @@ async def trigger_propose():
         "response": response_snippet or None,
         "completed_at": None if ok else _now_iso(),
         "proposal_id": None,
+        "technique": target_tech or None,
     }
     async with _file_lock:
         triggers = _read_list(TRIGGERS_FILE)
@@ -2176,7 +2198,7 @@ async def trigger_propose():
         _write_json(TRIGGERS_FILE, triggers[-TRIGGERS_CAP:])
         _log_activity("operator", "propose.triggered", f"{tid}: {detail}")
     _invalidate_health()
-    return {"triggered": ok, "detail": detail, "trigger_id": tid, "status": record["status"]}
+    return {"triggered": ok, "detail": detail, "trigger_id": tid, "status": record["status"], "technique": target_tech or None}
 
 
 @app.get("/api/triggers")
