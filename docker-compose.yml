@@ -8,7 +8,7 @@ services:
     image: operator-console:latest
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${HOST_BIND:-127.0.0.1}:8000:8000"
     environment:
       CONSOLE_TOKEN: ${CONSOLE_TOKEN:?CONSOLE_TOKEN required}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}

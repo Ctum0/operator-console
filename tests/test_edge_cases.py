@@ -910,3 +910,39 @@ def test_agent_health_failed_trigger_recovery(m, monkeypatch):
         assert "last trigger failed" in comp2["detail"]
 
 
+def test_security_headers_and_body_limits(m):
+    with TestClient(m.app) as c:
+        # 1. Security headers check
+        r = c.get("/api/proposals", headers=AUTH)
+        assert "object-src 'none'" in r.headers["content-security-policy"]
+        assert r.headers["x-content-type-options"] == "nosniff"
+        assert r.headers["x-frame-options"] == "DENY"
+        assert r.headers["x-permitted-cross-domain-policies"] == "none"
+        assert "geolocation=()" in r.headers["permissions-policy"]
+
+        # 2. Oversized payload rejected with 413
+        oversized = {"sigma_yaml": "x" * 200}
+        r_large = c.post(
+            "/api/rules/validate",
+            json=oversized,
+            headers={**AUTH, "content-length": str(3 * 1024 * 1024)}
+        )
+        assert r_large.status_code == 413
+        assert "limit of 2MB" in r_large.json()["detail"]
+
+
+def test_auth_brute_force_rate_limit(m):
+    with TestClient(m.app) as c:
+        m._failed_auth_attempts.clear()
+        for _ in range(m.AUTH_BRUTE_FORCE_LIMIT):
+            r = c.get("/api/proposals", headers={"Authorization": "Bearer wrong"})
+            assert r.status_code == 401
+        
+        # Next attempt triggers 429
+        r_blocked = c.get("/api/proposals", headers={"Authorization": "Bearer wrong"})
+        assert r_blocked.status_code == 429
+        assert "too many failed authentication attempts" in r_blocked.json()["error"]
+        m._failed_auth_attempts.clear()
+
+
+

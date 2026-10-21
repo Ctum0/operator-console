@@ -2452,7 +2452,10 @@ async function api(method, path, body) {
 
 /* ================= helpers ================= */
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
-function safeUrl(u) { return /^https?:\/\//i.test(String(u || '')) ? String(u) : ''; }
+function safeUrl(u) {
+  const s = String(u || '').trim();
+  return /^https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=]+$/i.test(s) ? esc(s) : '';
+}
 function ago(ts) {
   const t = Date.parse(ts); if (!ts || isNaN(t)) return '';
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -3927,7 +3930,8 @@ function renderSubmitView() {
         reasoning: reason,
       });
       toast('Rule submitted as PR #' + res.pr_number + '!');
-      subResult.innerHTML = `<div class="callout ok">${icon('check')}<div><b>PR created successfully!</b><br><a href="${esc(res.pr_url)}" target="_blank" rel="noopener noreferrer">${esc(res.pr_url)}</a><br>Proposal ID: <code>${esc(res.proposal_id)}</code> registered in review queue.</div></div>`;
+      const safePrUrl = safeUrl(res.pr_url);
+      subResult.innerHTML = `<div class="callout ok">${icon('check')}<div><b>PR created successfully!</b><br>${safePrUrl ? `<a href="${safePrUrl}" target="_blank" rel="noopener noreferrer">${safePrUrl}</a><br>` : ''}Proposal ID: <code>${esc(res.proposal_id)}</code> registered in review queue.</div></div>`;
       await loadProposals();
       renderShell();
       setTimeout(() => {

@@ -36,6 +36,7 @@ import json
 import logging
 import os
 import platform
+import posixpath
 import re
 import time
 import uuid
@@ -329,10 +330,49 @@ if CORS_ORIGINS:
 # enforce same-origin, which is exactly what the console needs (the UI is
 # served from this same origin).
 
+# In-memory client IP tracking for failed auth attempts (brute-force defense)
+_failed_auth_attempts: dict[str, list[float]] = {}
+AUTH_BRUTE_FORCE_WINDOW = 60.0
+AUTH_BRUTE_FORCE_LIMIT = 40
+
+# Maximum request body size: 2MB (prevents memory exhaustion DoS)
+MAX_REQUEST_BODY_SIZE = 2 * 1024 * 1024
+
+
+@app.middleware("http")
+async def _limit_body_size(request: Request, call_next):
+    if request.method in ("POST", "PUT", "PATCH"):
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > MAX_REQUEST_BODY_SIZE:
+                    jlog("warning", "request_payload_too_large", {"path": request.url.path, "length": content_length})
+                    return JSONResponse({"detail": "request payload exceeds maximum limit of 2MB"}, status_code=413)
+            except ValueError:
+                pass
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def _auth(request: Request, call_next):
-    if request.url.path.startswith("/api/"):
+    # Default-Deny: Only root index ("/") and healthcheck ("/healthz") and static files are public.
+    norm_path = posixpath.normpath(request.url.path)
+    is_public = norm_path in ("/", "/healthz") or norm_path.startswith("/static/")
+
+    if not is_public:
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        if client_ip in _failed_auth_attempts:
+            attempts = [t for t in _failed_auth_attempts[client_ip] if now - t < AUTH_BRUTE_FORCE_WINDOW]
+            _failed_auth_attempts[client_ip] = attempts
+            if len(attempts) >= AUTH_BRUTE_FORCE_LIMIT:
+                jlog("warning", "auth_rate_limited", {"ip": client_ip, "path": norm_path})
+                return JSONResponse(
+                    {"error": "too many failed authentication attempts; try again later"},
+                    status_code=429,
+                    headers={"Retry-After": "60"},
+                )
+
         header = request.headers.get("authorization", "")
         supplied = header[len("Bearer "):] if header.lower().startswith("bearer ") else ""
         if not supplied:
@@ -344,13 +384,15 @@ async def _auth(request: Request, call_next):
             except TypeError:
                 ok = False  # non-ASCII token can't match; never 500 on it
         if not ok:
-            jlog("warning", "unauthorized_request", {"path": request.url.path})
+            if client_ip != "unknown":
+                _failed_auth_attempts.setdefault(client_ip, []).append(now)
+            jlog("warning", "unauthorized_request", {"path": request.url.path, "ip": client_ip})
             return JSONResponse({"error": "unauthorized"}, status_code=401)
     return await call_next(request)
 
 
 _CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "
+        "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; "
         "base-uri 'none'; form-action 'self'")
 
 
@@ -361,6 +403,13 @@ async def _security_headers(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
+    )
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     if request.url.path.startswith("/api/"):
         response.headers.setdefault("Cache-Control", "no-store")
     return response
