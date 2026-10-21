@@ -18,7 +18,7 @@
     if (!localStorage.getItem('consoleToken')) document.documentElement.classList.add('locked');
   } catch (_) { document.documentElement.classList.add('locked'); }
   try {
-    const savedTheme = localStorage.getItem('consoleTheme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    const savedTheme = localStorage.getItem('consoleTheme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
   } catch (_) {}
 </script>

@@ -46,6 +46,17 @@ pending ──approve──▶ merging ──▶ merged ──validated──▶
   and only applies to a `merged` proposal.
 - Proposals left in `merging` by a crash are moved to `merge_failed` at startup.
 
+## Security, Scope & Operational Disclaimer
+
+The Operator Console is a **detection engineering control plane, review workbench, and research prototype**. It is designed to model modern detection-as-code lifecycles in controlled lab and development environments.
+
+### Operational Security Boundaries
+- **Lab & Internal Use**: Designed for internal SOC/detection engineering teams and lab environments. Not pre-hardened for public internet exposure without perimeter security.
+- **Authentication & Perimeter**: The console uses a shared bearer token (`CONSOLE_TOKEN`) and browser session isolation (`demoMode`). In an enterprise deployment, front the console with an Identity-Aware Proxy (Cloudflare Zero Trust, Google IAP, or Tailscale with SSO/MFA) and enforce RBAC.
+- **Token Privilege Principle**: The `GITHUB_TOKEN` PAT should be fine-grained and strictly restricted to the target detection repository (`Ctum0/detection-platform`).
+- **Simulation Safety**: Attack simulations dispatched from the console execute real adversary techniques via CI/CD runners. Runners must target isolated sandbox VMs.
+- **Vulnerability Reporting**: See [`SECURITY.md`](SECURITY.md) for responsible disclosure guidelines.
+
 ## Run locally
 
 ```bash

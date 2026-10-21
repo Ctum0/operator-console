@@ -5,17 +5,27 @@
 
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 .venv/
 venv/
+.pytest_cache/
 
 # Local state and backups of the /data volume
 data/
 *.tar.gz
 
+# Local artifacts & media
+.artifacts/
+*.mp4
+*.webm
+*.wav
+*.mp3
+
 # Editor / OS
 .vscode/
 .idea/
 .DS_Store
-.artifacts/
+Thumbs.db
+*.swp
+*~
